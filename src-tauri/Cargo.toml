@@ -1,0 +1,27 @@
+[package]
+name = "snipdock"
+version = "0.1.0"
+description = "SnipDock - Local snippet manager"
+authors = ["gongshl"]
+edition = "2021"
+rust-version = "1.77"
+
+[lib]
+name = "snipdock_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-global-shortcut = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+rusqlite = { version = "0.31", features = ["bundled"] }
+chrono = { version = "0.4", features = ["serde"] }
+thiserror = "1"
+
+[features]
+# 这个标记由 `tauri build` 在生产构建时启用，用来移除调试断言/日志。
+custom-protocol = ["tauri/custom-protocol"]

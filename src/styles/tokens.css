@@ -1,0 +1,25 @@
+/* 视觉令牌：颜色、字号、间距。
+ * v1 仅深色主题；亮色留 v2。 */
+:root {
+  --bg-1: #0f1115;
+  --bg-2: #161a21;
+  --bg-3: #1d222b;
+  --fg-1: #e5e9f0;
+  --fg-2: #9aa3b2;
+  --accent: #5b8def;
+  --accent-soft: rgba(91, 141, 239, 0.18);
+  --danger: #e57373;
+  --border: #242a35;
+  --mono: 'JetBrains Mono', 'Cascadia Code', Consolas, ui-monospace, monospace;
+  --sans: -apple-system, 'Segoe UI', 'Microsoft YaHei', system-ui, sans-serif;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+
+  --radius-1: 4px;
+  --radius-2: 6px;
+  --radius-3: 8px;
+}
