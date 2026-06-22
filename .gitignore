@@ -8,6 +8,9 @@ dist-ssr/
 src-tauri/target/
 src-tauri/gen/
 
+# 个人 cargo 镜像配置（每个开发者按需自配，不入库）
+.cargo/
+
 # IDE
 .vscode/*
 !.vscode/extensions.json
