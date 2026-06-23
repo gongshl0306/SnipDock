@@ -28,6 +28,9 @@ pub enum AppError {
 
     #[error("Database error: {0}")]
     Db(String),
+
+    #[error("{0}")]
+    Shortcut(String),
 }
 
 impl From<rusqlite::Error> for AppError {

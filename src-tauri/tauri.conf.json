@@ -12,6 +12,7 @@
   "app": {
     "windows": [
       {
+        "label": "main",
         "title": "SnipDock",
         "width": 1000,
         "height": 640,

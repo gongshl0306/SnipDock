@@ -1,20 +1,29 @@
 // SnipDock 后端入口。
 //
-// 启动职责：初始化数据库（建表/索引/默认分类）、把连接以
-// `Mutex<Connection>` 注入 State、注册 commands。
+// 启动职责：
+//   1. 加载设置（JSON 文件，不存在则默认值）
+//   2. 初始化数据库（建表/索引/默认分类）
+//   3. 创建系统托盘
+//   4. 若 settings.toggle_shortcut 有值，注册全局呼出快捷键
+//   5. 拦截主窗口关闭 → 改为隐藏（缩到托盘，进程常驻）
+//   6. 注册所有 commands
+//
 // ping 命令保留作为启动连通性自检，M6 收尾时再移除。
 
 mod commands;
 mod db;
 mod error;
+mod settings;
+mod tray;
 
 use std::sync::Mutex;
-use tauri::Manager;
+use tauri::{Manager, WindowEvent};
+use tauri_plugin_global_shortcut::GlobalShortcutExt;
 
 use commands::{
     create_category, create_snippet, delete_category, delete_snippet,
-    list_categories, list_snippets, list_snippets_by_category, mark_snippet_used,
-    update_category, update_snippet,
+    get_settings, list_categories, list_snippets, list_snippets_by_category,
+    mark_snippet_used, set_toggle_shortcut, update_category, update_snippet,
 };
 
 /// 简单连通性检查命令，返回数据库中分类数量，证明 DB 已可用。
@@ -30,7 +39,15 @@ fn ping(state: tauri::State<'_, Mutex<rusqlite::Connection>>) -> Result<String, 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .setup(|app| {
+            let app_handle = app.handle().clone();
+
+            // 1. 加载设置（先于托盘/快捷键，供后续读取）。
+            let app_settings = settings::load(&app_handle);
+            app.manage(Mutex::new(app_settings.clone()));
+
+            // 2. 数据库初始化。
             let data_dir = app
                 .path()
                 .app_data_dir()
@@ -39,7 +56,32 @@ pub fn run() {
             let db_path = data_dir.join("snipdock.db");
             let conn = db::open_and_migrate(&db_path).expect("failed to init database");
             app.manage(Mutex::new(conn));
+
+            // 3. 创建系统托盘。
+            tray::create_tray(app.handle()).expect("failed to create tray");
+
+            // 4. 若配置了呼出快捷键，启动时注册（呼出主窗口）。
+            //    注册失败只打日志，不阻断启动（用户可在设置里改）。
+            if let Some(accel) = app_settings.toggle_shortcut.as_deref() {
+                if let Err(e) =
+                    app.global_shortcut().on_shortcut(accel, move |app, _s, _e| {
+                        tray::toggle_main_window(app);
+                    })
+                {
+                    eprintln!("启动注册呼出快捷键 {accel} 失败：{e}");
+                }
+            }
+
             Ok(())
+        })
+        // 5. 拦截主窗口关闭：隐藏而非销毁（缩到托盘）。
+        .on_window_event(|window, event| {
+            if let WindowEvent::CloseRequested { api, .. } = event {
+                if window.label() == tray::MAIN_WINDOW {
+                    let _ = window.hide();
+                    api.prevent_close();
+                }
+            }
         })
         .invoke_handler(tauri::generate_handler![
             ping,
@@ -53,6 +95,8 @@ pub fn run() {
             update_snippet,
             delete_snippet,
             mark_snippet_used,
+            get_settings,
+            set_toggle_shortcut,
         ])
         .run(tauri::generate_context!())
         .expect("error while running SnipDock");
