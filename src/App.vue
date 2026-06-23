@@ -8,6 +8,7 @@ import SnippetEditor from '@/components/SnippetEditor.vue'
 import SettingsDialog from '@/components/SettingsDialog.vue'
 import { useCategories } from '@/composables/useCategories'
 import { useSnippets } from '@/composables/useSnippets'
+import { bindShortcuts } from '@/composables/useShortcuts'
 
 // 启动自检：ping 证明后端 + DB 连通。M6 收尾时移除。
 const status = ref<'loading' | 'ok' | 'err'>('loading')
@@ -27,6 +28,7 @@ onMounted(async () => {
     await loadCategories()
     bindCategoryWatcher()
     await loadSnippets()
+    bindShortcuts()
   } catch (e: unknown) {
     message.value = String(e)
     status.value = 'err'
