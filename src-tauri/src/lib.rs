@@ -13,6 +13,7 @@
 mod commands;
 mod db;
 mod error;
+mod quick_window;
 mod settings;
 mod tray;
 
@@ -60,12 +61,16 @@ pub fn run() {
             // 3. 创建系统托盘。
             tray::create_tray(app.handle()).expect("failed to create tray");
 
-            // 4. 若配置了呼出快捷键，启动时注册（呼出主窗口）。
+            // 4. 预创建快速搜索窗口（隐藏）。快捷键即显用。
+            quick_window::create_quick_window(app.handle())
+                .expect("failed to create quick window");
+
+            // 5. 若配置了呼出快捷键，启动时注册（呼出的是 quick 窗口）。
             //    注册失败只打日志，不阻断启动（用户可在设置里改）。
             if let Some(accel) = app_settings.toggle_shortcut.as_deref() {
                 if let Err(e) =
                     app.global_shortcut().on_shortcut(accel, move |app, _s, _e| {
-                        tray::toggle_main_window(app);
+                        quick_window::toggle_quick_window(app);
                     })
                 {
                     eprintln!("启动注册呼出快捷键 {accel} 失败：{e}");
@@ -74,13 +79,22 @@ pub fn run() {
 
             Ok(())
         })
-        // 5. 拦截主窗口关闭：隐藏而非销毁（缩到托盘）。
+        // 6. 窗口事件：main 关闭→隐藏（缩托盘）；quick 失焦→隐藏。
         .on_window_event(|window, event| {
-            if let WindowEvent::CloseRequested { api, .. } = event {
-                if window.label() == tray::MAIN_WINDOW {
-                    let _ = window.hide();
-                    api.prevent_close();
+            let label = window.label();
+            match event {
+                WindowEvent::CloseRequested { api, .. } => {
+                    if label == tray::MAIN_WINDOW {
+                        let _ = window.hide();
+                        api.prevent_close();
+                    }
                 }
+                WindowEvent::Focused(false) => {
+                    if label == quick_window::QUICK_WINDOW {
+                        let _ = window.hide();
+                    }
+                }
+                _ => {}
             }
         })
         .invoke_handler(tauri::generate_handler![
