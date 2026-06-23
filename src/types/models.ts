@@ -20,8 +20,6 @@ export interface Snippet {
   category_name?: string
   title: string
   content: string
-  description: string
-  language: string
   favorite: number
   used_count: number
   created_at: string
@@ -34,8 +32,6 @@ export interface CreateSnippetPayload {
   category_id: number
   title: string
   content: string
-  description?: string
-  language?: string
   favorite?: number
 }
 
@@ -45,8 +41,6 @@ export interface UpdateSnippetPayload {
   category_id: number
   title: string
   content: string
-  description?: string
-  language?: string
   favorite?: number
 }
 

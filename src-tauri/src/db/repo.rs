@@ -139,8 +139,6 @@ pub struct SnippetRow {
     pub category_name: Option<String>,
     pub title: String,
     pub content: String,
-    pub description: String,
-    pub language: String,
     pub favorite: i64,
     pub used_count: i64,
     pub created_at: String,
@@ -155,8 +153,6 @@ fn row_to_snippet(row: &Row<'_>) -> rusqlite::Result<SnippetRow> {
         category_name: row.get::<_, Option<String>>("category_name")?,
         title: row.get("title")?,
         content: row.get("content")?,
-        description: row.get("description")?,
-        language: row.get("language")?,
         favorite: row.get("favorite")?,
         used_count: row.get("used_count")?,
         created_at: row.get("created_at")?,
@@ -170,7 +166,7 @@ fn row_to_snippet(row: &Row<'_>) -> rusqlite::Result<SnippetRow> {
 /// last_used_at 为 NULL 时排到最后（用 MAX(NULL, '1970...') 兜底）。
 const SNIPPET_SELECT_ORDER: &str = "
 SELECT s.id, s.category_id, c.name AS category_name,
-       s.title, s.content, s.description, s.language,
+       s.title, s.content,
        s.favorite, s.used_count, s.created_at, s.updated_at, s.last_used_at
 FROM snippets s
 LEFT JOIN categories c ON c.id = s.category_id
@@ -209,31 +205,28 @@ pub fn list_snippets_by_category(
 
 const SELECT_SNIPPET_BY_ID: &str = "
 SELECT s.id, s.category_id, c.name AS category_name,
-       s.title, s.content, s.description, s.language,
+       s.title, s.content,
        s.favorite, s.used_count, s.created_at, s.updated_at, s.last_used_at
 FROM snippets s
 LEFT JOIN categories c ON c.id = s.category_id
 WHERE s.id = ?1";
 
 /// 新建片段。调用方保证 title/content 已 trim 非空。
-/// 默认值：language="text", favorite=0, description=""，
-///         used_count=0, last_used_at=NULL, created_at=updated_at=now。
+/// 默认值：favorite=0, used_count=0, last_used_at=NULL, created_at=updated_at=now。
 pub fn insert_snippet(
     conn: &Connection,
     category_id: i64,
     title: &str,
     content: &str,
-    description: &str,
-    language: &str,
     favorite: i64,
 ) -> Result<SnippetRow, rusqlite::Error> {
     let now = chrono::Utc::now().to_rfc3339();
     conn.execute(
         "INSERT INTO snippets
-           (category_id, title, content, description, language,
+           (category_id, title, content,
             favorite, used_count, created_at, updated_at, last_used_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, 0, ?7, ?7, NULL)",
-        params![category_id, title, content, description, language, favorite, now],
+         VALUES (?1, ?2, ?3, ?4, 0, ?5, ?5, NULL)",
+        params![category_id, title, content, favorite, now],
     )?;
     let id = conn.last_insert_rowid();
     conn.query_row(SELECT_SNIPPET_BY_ID, params![id], row_to_snippet)
@@ -247,8 +240,6 @@ pub fn update_snippet(
     category_id: i64,
     title: &str,
     content: &str,
-    description: &str,
-    language: &str,
     favorite: i64,
 ) -> Result<SnippetRow, AppError> {
     let exists: i64 = conn.query_row(
@@ -266,9 +257,9 @@ pub fn update_snippet(
     conn.execute(
         "UPDATE snippets SET
            category_id = ?1, title = ?2, content = ?3,
-           description = ?4, language = ?5, favorite = ?6, updated_at = ?7
-         WHERE id = ?8",
-        params![category_id, title, content, description, language, favorite, now, id],
+           favorite = ?4, updated_at = ?5
+         WHERE id = ?6",
+        params![category_id, title, content, favorite, now, id],
     )?;
     Ok(conn.query_row(SELECT_SNIPPET_BY_ID, params![id], row_to_snippet)?)
 }

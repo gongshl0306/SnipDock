@@ -21,8 +21,6 @@ pub struct CreateSnippetPayload {
     pub category_id: i64,
     pub title: String,
     pub content: String,
-    pub description: Option<String>,
-    pub language: Option<String>,
     pub favorite: Option<i64>,
 }
 
@@ -33,8 +31,6 @@ pub struct UpdateSnippetPayload {
     pub category_id: i64,
     pub title: String,
     pub content: String,
-    pub description: Option<String>,
-    pub language: Option<String>,
     pub favorite: Option<i64>,
 }
 
@@ -53,10 +49,6 @@ fn normalize_content(raw: &str) -> Result<String, AppError> {
         return Err(AppError::SnippetContentEmpty);
     }
     Ok(raw.to_string())
-}
-
-fn normalize_optional(raw: Option<&str>) -> String {
-    raw.map(|s| s.trim()).unwrap_or("").to_string()
 }
 
 /// 列出全部片段（「全部」视图）。已按 spec §9.4 排序。
@@ -86,11 +78,6 @@ pub fn create_snippet(
 ) -> Result<SnippetRow, AppError> {
     let title = normalize_title(&payload.title)?;
     let content = normalize_content(&payload.content)?;
-    let description = normalize_optional(payload.description.as_deref());
-    let language = {
-        let l = normalize_optional(payload.language.as_deref());
-        if l.is_empty() { "text".to_string() } else { l }
-    };
     let favorite = payload.favorite.unwrap_or(0);
 
     let conn = state.lock().expect("db mutex poisoned");
@@ -99,8 +86,6 @@ pub fn create_snippet(
         payload.category_id,
         &title,
         &content,
-        &description,
-        &language,
         favorite,
     )?)
 }
@@ -114,18 +99,10 @@ pub fn update_snippet(
     let id = payload.id;
     let title = normalize_title(&payload.title)?;
     let content = normalize_content(&payload.content)?;
-    let description = normalize_optional(payload.description.as_deref());
-    let language = {
-        let l = normalize_optional(payload.language.as_deref());
-        if l.is_empty() { "text".to_string() } else { l }
-    };
     let favorite = payload.favorite.unwrap_or(0);
 
     let conn = state.lock().expect("db mutex poisoned");
-    repo::update_snippet(
-        &conn, id, payload.category_id, &title, &content, &description,
-        &language, favorite,
-    )
+    repo::update_snippet(&conn, id, payload.category_id, &title, &content, favorite)
 }
 
 /// 删除片段。不存在返回 NotFound。

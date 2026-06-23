@@ -22,8 +22,6 @@ CREATE TABLE IF NOT EXISTS snippets (
     category_id INTEGER NOT NULL,
     title TEXT NOT NULL,
     content TEXT NOT NULL,
-    description TEXT NOT NULL DEFAULT '',
-    language TEXT NOT NULL DEFAULT 'text',
     favorite INTEGER NOT NULL DEFAULT 0,
     used_count INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL,
@@ -43,7 +41,7 @@ const INDEXES: &[&str] = &[
 pub fn run(conn: &Connection) -> Result<(), rusqlite::Error> {
     conn.execute(CREATE_CATEGORIES, [])?;
     conn.execute(CREATE_SNIPPETS, [])?;
-    drop_tags_column_if_exists(conn)?;
+    drop_deprecated_snippet_columns(conn)?;
     for stmt in INDEXES {
         conn.execute(stmt, [])?;
     }
@@ -51,18 +49,27 @@ pub fn run(conn: &Connection) -> Result<(), rusqlite::Error> {
     Ok(())
 }
 
-/// 幂等：删除老 DB 里遗留的 `snippets.tags` 列（v1 已移除 Tag 功能）。
-/// 对全新 DB（无此列）是空操作；对老 DB（有此列）执行 DROP COLUMN。
+/// 幂等：删除 snippets 表里已废弃的列（v1 迭代中陆续移除的字段）。
+/// 对全新 DB 是空操作；对老 DB 执行 DROP COLUMN。
 /// 内置 SQLite >= 3.35.0 支持 DROP COLUMN（rusqlite 0.31 bundled = 3.45.x）。
-fn drop_tags_column_if_exists(conn: &Connection) -> Result<(), rusqlite::Error> {
+///
+/// 已废弃清单：
+///   - tags：v1 不实现 Tag 功能（spec §4）
+///   - description / language：v1 简化 schema，只留 title/content/分类/收藏
+fn drop_deprecated_snippet_columns(conn: &Connection) -> Result<(), rusqlite::Error> {
+    const DEPRECATED: &[&str] = &["tags", "description", "language"];
+
     // PRAGMA table_info 返回每列一行；name 在第 2 列（index 1）。
-    let mut stmt = conn.prepare("PRAGMA table_info(snippets)")?;
-    let column_names = stmt.query_map([], |row| row.get::<_, String>(1))?;
-    let has_tags = column_names
-        .filter_map(|r| r.ok())
-        .any(|name| name == "tags");
-    if has_tags {
-        conn.execute("ALTER TABLE snippets DROP COLUMN tags", [])?;
+    let existing: Vec<String> = {
+        let mut stmt = conn.prepare("PRAGMA table_info(snippets)")?;
+        let rows = stmt.query_map([], |row| row.get::<_, String>(1))?;
+        rows.filter_map(|r| r.ok()).collect()
+    };
+
+    for col in DEPRECATED {
+        if existing.iter().any(|name| name == col) {
+            conn.execute(&format!("ALTER TABLE snippets DROP COLUMN {col}"), [])?;
+        }
     }
     Ok(())
 }

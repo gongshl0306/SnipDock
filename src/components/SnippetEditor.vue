@@ -24,8 +24,6 @@ interface FormState {
   category_id: number
   title: string
   content: string
-  description: string
-  language: string
   favorite: boolean
 }
 
@@ -39,8 +37,6 @@ function makeEmptyForm(): FormState {
     category_id: 0,
     title: '',
     content: '',
-    description: '',
-    language: 'text',
     favorite: false,
   }
 }
@@ -54,8 +50,6 @@ function initForm() {
       category_id: s.category_id,
       title: s.title,
       content: s.content,
-      description: s.description,
-      language: s.language,
       favorite: s.favorite !== 0,
     }
   } else {
@@ -93,8 +87,6 @@ async function onSave() {
         category_id: form.value.category_id,
         title: form.value.title,
         content: form.value.content,
-        description: form.value.description,
-        language: form.value.language,
         favorite: fav,
       }
       await update(payload)
@@ -103,8 +95,6 @@ async function onSave() {
         category_id: form.value.category_id,
         title: form.value.title,
         content: form.value.content,
-        description: form.value.description,
-        language: form.value.language,
         favorite: fav,
       }
       await create(payload)
@@ -153,34 +143,6 @@ function onCancel() {
           rows="8"
           placeholder="kubectl get pods -A -o wide"
           class="mono"
-        />
-      </label>
-
-      <label class="field">
-        <span class="label">语言</span>
-        <input
-          v-model="form.language"
-          type="text"
-          list="lang-list"
-        />
-        <datalist id="lang-list">
-          <option value="text" />
-          <option value="bash" />
-          <option value="shell" />
-          <option value="python" />
-          <option value="javascript" />
-          <option value="sql" />
-          <option value="json" />
-          <option value="yaml" />
-        </datalist>
-      </label>
-
-      <label class="field">
-        <span class="label">描述</span>
-        <input
-          v-model="form.description"
-          type="text"
-          placeholder="可选"
         />
       </label>
 

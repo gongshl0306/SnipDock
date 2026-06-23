@@ -73,14 +73,6 @@ async function onConfirmDelete() {
             <dd>{{ categoryName(selectedSnippet.category_id, selectedSnippet.category_name) }}</dd>
           </div>
           <div class="meta-row">
-            <dt>语言</dt>
-            <dd><code>{{ selectedSnippet.language }}</code></dd>
-          </div>
-          <div v-if="selectedSnippet.description" class="meta-row">
-            <dt>描述</dt>
-            <dd>{{ selectedSnippet.description }}</dd>
-          </div>
-          <div class="meta-row">
             <dt>使用</dt>
             <dd>{{ selectedSnippet.used_count }} 次 · 最近 {{ fmtTime(selectedSnippet.last_used_at) }}</dd>
           </div>

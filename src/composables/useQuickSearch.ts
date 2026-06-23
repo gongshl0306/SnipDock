@@ -29,7 +29,6 @@ const filteredSnippets = computed<Snippet[]>(() => {
     const hay = [
       s.title,
       s.content,
-      s.description,
       s.category_name ?? '',
     ]
       .join('\n')

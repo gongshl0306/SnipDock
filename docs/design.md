@@ -101,7 +101,7 @@ SnipDock/
 
 完全按照 [target.md](target.md) §5.1–§5.4。**不增减字段、不改名**：
 - `categories(id, name, description, sort_order, created_at, updated_at)`
-- `snippets(id, category_id NOT NULL FK, title, content, description, language, favorite, used_count, created_at, updated_at, last_used_at)`
+- `snippets(id, category_id NOT NULL FK, title, content, favorite, used_count, created_at, updated_at, last_used_at)`
 - 索引：`idx_snippets_category_id` / `idx_snippets_updated_at` / `idx_snippets_used_count` / `idx_snippets_last_used_at`
 
 ### 4.2 数据库文件位置
@@ -189,7 +189,7 @@ pub enum AppError {
 |---|---|
 | `name` / `title` / `content` trim 后非空 | Rust 端，写库前 |
 | `category_id` 必须存在 | DB 外键 + `update_category` 时显式 SELECT |
-| `language` 默认 `"text"`、`favorite` 默认 0 | Rust 端 default |
+| `favorite` 默认 0 | Rust 端 default |
 
 ---
 
@@ -231,7 +231,7 @@ const isEditing = ref(false)
 完全按 spec §9.4 的伪代码实现 `filteredSnippets` 这个 `computed`：
 
 1. 若 `selectedCategoryId !== null` 先按 category_id 过滤；
-2. 关键字 `keyword.toLowerCase()` 在 4 个字段中包含匹配（title/content/description/category_name）；
+2. 关键字 `keyword.toLowerCase()` 在 3 个字段中包含匹配（title/content/category_name）；
 3. 排序：`favorite desc → last_used_at desc → used_count desc → updated_at desc`。
 
 `category_name` 通过 `joinSnippetWithCategoryName(snippets, categories)` 在 composable 中合成。
@@ -287,7 +287,7 @@ App.vue
 │              │                         │                         │
 │ 全部         │  查看 GPU 温度          │  标题：查看 GPU 温度     │
 │ 默认         │  kubectl 查看 Pod       │  分类：ROCm              │
-│ Linux        │  docker logs            │  语言：bash              │
+│ Linux        │  docker logs            │  收藏                  │
 │ Docker       │  md5 校验文件           │                         │
 │ Kubernetes   │                         │  rocm-smi --showtemp     │
 │ ROCm  ▸      │                         │                         │
