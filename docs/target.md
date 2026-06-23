@@ -2,7 +2,7 @@
 
 ## 1. 功能目标
 
-SnipDock 需要支持用户自定义分类，每个分类下可以保存多个片段记录。每条片段可以添加 Tag，也可以不添加 Tag。
+SnipDock 需要支持用户自定义分类，每个分类下可以保存多个片段记录。每条片段包含标题、内容、分类、语言、描述、收藏等字段。
 
 用户可以在两种范围内检索：
 
@@ -101,56 +101,9 @@ SQL
 
 ## 4. Tag 设计
 
-### 4.1 Tag 概念
+**v1 不实现 Tag 功能。** 经评估，标题 + 描述 + 内容搜索已能满足 v1 检索需求，Tag 的录入心智负担与其在轻量搜索下的实际收益不匹配。
 
-Tag 用于对片段做轻量标记，方便跨分类检索。
-
-例如：
-
-```text
-gpu
-rocm
-dcu
-k8s
-docker
-log
-debug
-md5
-ssh
-```
-
-### 4.2 Tag 规则
-
-1. Tag 是可选字段。
-2. 一条片段可以没有 Tag。
-3. 一条片段可以有多个 Tag。
-4. 第一版 Tag 可以用逗号分隔字符串保存。
-5. 后续如果需要更规范，可以拆成独立 tags 表和 snippet_tags 关联表。
-
-### 4.3 第一版 Tag 存储方式
-
-第一版为了轻量，直接存储在 snippets 表中：
-
-```text
-tags = "rocm,gpu,dcu"
-```
-
-优点：
-
-```text
-实现简单
-查询简单
-适合本地小工具
-```
-
-缺点：
-
-```text
-Tag 重命名不方便
-Tag 统计不够规范
-```
-
-第一版可以接受。
+Tag（含独立 tags 表、跨分类检索、重命名、统计）留待 v2 重新设计。
 
 ---
 
@@ -181,7 +134,6 @@ CREATE TABLE IF NOT EXISTS snippets (
     category_id INTEGER NOT NULL,
     title TEXT NOT NULL,
     content TEXT NOT NULL,
-    tags TEXT DEFAULT '',
     description TEXT DEFAULT '',
     language TEXT DEFAULT 'text',
     favorite INTEGER DEFAULT 0,
@@ -231,8 +183,6 @@ CREATE INDEX IF NOT EXISTS idx_snippets_last_used_at
 ON snippets(last_used_at);
 ```
 
-第一版 Tag 使用字符串存储，不单独建 Tag 索引。
-
 ---
 
 ## 6. TypeScript 类型设计
@@ -259,7 +209,6 @@ export interface Snippet {
   category_name?: string
   title: string
   content: string
-  tags: string
   description: string
   language: string
   favorite: number
@@ -277,7 +226,6 @@ export interface CreateSnippetPayload {
   category_id: number
   title: string
   content: string
-  tags?: string
   description?: string
   language?: string
   favorite?: number
@@ -292,7 +240,6 @@ export interface UpdateSnippetPayload {
   category_id: number
   title: string
   content: string
-  tags?: string
   description?: string
   language?: string
   favorite?: number
@@ -400,7 +347,6 @@ categoryId = 具体数字 表示分类内检索
 title
 content
 description
-tags
 category_name
 ```
 
@@ -412,7 +358,7 @@ category_name
 
 ```text
 从全部 snippets 中搜索
-匹配 title / content / description / tags / category_name
+匹配 title / content / description / category_name
 返回结果中展示分类名
 ```
 
@@ -420,7 +366,6 @@ category_name
 
 ```text
 用户不知道片段在哪个分类
-用户想通过 tag 找跨分类内容
 用户想快速搜索所有命令
 ```
 
@@ -432,7 +377,7 @@ category_name
 
 ```text
 先过滤 category_id
-再匹配 title / content / description / tags
+再匹配 title / content / description
 返回当前分类内结果
 ```
 
@@ -445,35 +390,7 @@ category_name
 
 ### 8.4 Tag 检索
 
-Tag 检索第一版不做复杂语法，直接作为普通关键词参与搜索。
-
-例如片段：
-
-```text
-title: 查看 GPU 温度
-tags: rocm,gpu,dcu
-content: rocm-smi --showtemp
-```
-
-用户输入：
-
-```text
-gpu
-```
-
-即可命中。
-
-### 8.5 可选高级 Tag 语法
-
-后续可以支持：
-
-```text
-tag:gpu
-tag:k8s
-category:Docker
-```
-
-第一版不强制实现。
+v1 不实现 Tag，参见 §4。
 
 ---
 
@@ -536,7 +453,6 @@ const filteredSnippets = computed(() => {
         item.title.toLowerCase().includes(keyword) ||
         item.content.toLowerCase().includes(keyword) ||
         item.description.toLowerCase().includes(keyword) ||
-        item.tags.toLowerCase().includes(keyword) ||
         categoryName.toLowerCase().includes(keyword)
       )
     })
@@ -561,12 +477,12 @@ const filteredSnippets = computed(() => {
 
 ```text
 +------------------------------------------------------------+
-| Search snippets, commands, tags...                         |
+| Search snippets, commands...                                |
 +----------------+-------------------------+-----------------+
 | 分类            | 片段列表                 | 片段详情         |
 | 全部            | 查看 GPU 温度             | 标题             |
 | 默认            | kubectl 查看 Pod          | 分类             |
-| Linux           | docker logs               | Tags             |
+| Linux           | docker logs               | 语言             |
 | Docker          | md5 校验文件              | 内容预览         |
 | Kubernetes      |                         |                 |
 +----------------+-------------------------+-----------------+
@@ -615,13 +531,10 @@ const filteredSnippets = computed(() => {
 分类
 标题
 内容
-Tags
 描述
 语言
 是否收藏
 ```
-
-Tags 可以为空。
 
 ---
 
@@ -662,7 +575,6 @@ Ctrl + ↑ / Ctrl + ↓：切换分类
 选择分类：Kubernetes
 标题：查看所有 Pod
 内容：kubectl get pods -A -o wide
-Tags：k8s,pod
 描述：查看所有 namespace 下的 pod
 保存
 ```
@@ -672,7 +584,7 @@ Tags：k8s,pod
 ```text
 用户选择：全部
 搜索：pod
-结果显示所有分类中 title/content/tags/description 包含 pod 的片段
+结果显示所有分类中 title/content/description 包含 pod 的片段
 ```
 
 ### 12.4 分类内检索
@@ -685,10 +597,7 @@ Tags：k8s,pod
 
 ### 12.5 根据 Tag 检索
 
-```text
-用户搜索：k8s
-命中 tags 中包含 k8s 的片段
-```
+v1 不实现，参见 §4。
 
 ---
 
@@ -707,12 +616,7 @@ Tags：k8s,pod
 
 ### 13.2 Tag 验收
 
-```text
-片段可以不填写 Tag
-片段可以填写一个 Tag
-片段可以填写多个 Tag
-Tag 可以参与搜索
-```
+v1 不实现 Tag，无验收项。参见 §4。
 
 ### 13.3 搜索验收
 
@@ -722,7 +626,6 @@ Tag 可以参与搜索
 可以根据 title 搜索
 可以根据 content 搜索
 可以根据 description 搜索
-可以根据 tags 搜索
 全局搜索结果需要展示片段所属分类
 ```
 
@@ -739,7 +642,7 @@ UI 设计：增加左侧分类栏
 搜索逻辑：支持全局搜索和分类内搜索
 Rust Commands：增加分类 CRUD
 片段编辑器：增加分类选择
-验收标准：增加分类和 Tag 检索验收
+验收标准：增加分类检索验收
 ```
 
 ---
@@ -751,7 +654,6 @@ Rust Commands：增加分类 CRUD
 ```text
 分类使用 categories 表
 片段通过 category_id 关联分类
-Tag 继续使用 snippets.tags 字符串字段
 搜索在前端内存中完成
 全局搜索和分类内搜索通过 selectedCategoryId 控制
 ```

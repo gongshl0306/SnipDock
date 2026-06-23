@@ -1,16 +1,32 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
+import CategoryList from '@/components/CategoryList.vue'
+import SnippetList from '@/components/SnippetList.vue'
+import SnippetDetail from '@/components/SnippetDetail.vue'
+import SnippetEditor from '@/components/SnippetEditor.vue'
+import SettingsDialog from '@/components/SettingsDialog.vue'
+import { useCategories } from '@/composables/useCategories'
+import { useSnippets } from '@/composables/useSnippets'
 
-// M1：仅做启动验证。后续里程碑会接 useCategories / useSnippets。
+// 启动自检：ping 证明后端 + DB 连通。M6 收尾时移除。
 const status = ref<'loading' | 'ok' | 'err'>('loading')
 const message = ref('')
 
+const { load: loadCategories } = useCategories()
+const { isEditing, load: loadSnippets, bindCategoryWatcher } = useSnippets()
+
+// 设置弹窗可见性。
+const settingsOpen = ref(false)
+
 onMounted(async () => {
   try {
-    const reply = await invoke<string>('ping')
-    message.value = reply
+    message.value = await invoke<string>('ping')
     status.value = 'ok'
+    // 后端就绪后加载分类，再加载片段；并注册「分类切换→自动重载」watch。
+    await loadCategories()
+    bindCategoryWatcher()
+    await loadSnippets()
   } catch (e: unknown) {
     message.value = String(e)
     status.value = 'err'
@@ -23,19 +39,25 @@ onMounted(async () => {
     <header class="topbar">
       <input
         class="search"
-        placeholder="Search snippets, commands, tags..."
+        placeholder="Search snippets, commands... (M4)"
         disabled
       />
+      <button
+        class="settings-btn"
+        title="设置"
+        @click="settingsOpen = true"
+      >⚙</button>
     </header>
     <section class="cols">
       <aside class="col col-cat">
-        <div class="placeholder">分类（M2）</div>
+        <CategoryList />
       </aside>
       <section class="col col-list">
-        <div class="placeholder">片段列表（M3）</div>
+        <SnippetList />
       </section>
       <section class="col col-detail">
-        <div class="placeholder">片段详情（M3）</div>
+        <SnippetEditor v-if="isEditing" />
+        <SnippetDetail v-else />
       </section>
     </section>
     <footer class="statusbar">
@@ -43,6 +65,7 @@ onMounted(async () => {
       <span v-else-if="status === 'ok'" class="ok">{{ message }}</span>
       <span v-else class="err">后端连接失败：{{ message }}</span>
     </footer>
+    <SettingsDialog v-model="settingsOpen" />
   </main>
 </template>
 
@@ -56,18 +79,39 @@ onMounted(async () => {
 }
 .topbar {
   flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
   padding: 10px 12px;
   border-bottom: 1px solid var(--border);
   background: var(--bg-2);
 }
 .search {
-  width: 100%;
+  flex: 1 1 auto;
+  width: auto;
   padding: 8px 12px;
   background: var(--bg-3);
   color: var(--fg-1);
   border: 1px solid var(--border);
   border-radius: 6px;
   font: inherit;
+}
+.settings-btn {
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-3);
+  color: var(--fg-2);
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+}
+.settings-btn:hover {
+  border-color: var(--fg-2);
+  color: var(--fg-1);
 }
 .cols {
   flex: 1 1 auto;

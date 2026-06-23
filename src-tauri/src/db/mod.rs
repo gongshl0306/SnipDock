@@ -9,6 +9,7 @@
 // v1 不引入 schema 版本号。表结构未来变更时再加 `user_version` PRAGMA。
 
 pub mod migration;
+pub mod repo;
 
 use rusqlite::Connection;
 use std::path::Path;

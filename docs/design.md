@@ -8,20 +8,20 @@
 
 ## 1. 范围与目标
 
-第一版交付一个本地桌面端的代码片段管理器：分类组织、可选 Tag、全局/分类内关键字搜索、键盘驱动复制。
+第一版交付一个本地桌面端的代码片段管理器：分类组织、全局/分类内关键字搜索、键盘驱动复制。
 **性能假设（v1）：** 总片段数 < 5000，本地单用户单进程运行，首次加载全量到内存即可。
 
 ### 不做的事（呼应 target.md §15）
 
 为避免过度设计，下列特性 v1 一律不实现：
 
-- 独立的 `tags` 表 / `snippet_tags` 关联表
+- 独立的 `tags` 表 / `snippet_tags` 关联表（v1 连字符串 `tags` 也不做）
 - SQL 端搜索（FTS5、`LIKE` 联合查询）
 - 多级分类 / 分类树
 - 高级查询语法（`tag:foo`、`category:bar`）
 - 多个示例分类（v1 仅创建 `默认`）
 - 删除非空分类时级联或迁移片段（直接报错 `Category is not empty`）
-- 全局快捷键之外的系统集成（Tray、自动启动等）
+- 系统托盘之外的其他系统集成（自动启动、通知等）
 - 多窗口、多语言
 
 ---
@@ -36,7 +36,7 @@
 | 后端 | Rust + tauri::command | spec §7 已规定 command 接口 |
 | 数据库 | SQLite + rusqlite | 同步 API、小工具友好；连接以 `Mutex<Connection>` 管理（无需连接池） |
 | 剪贴板 | 前端 `navigator.clipboard.writeText` | v1 简化方案，见 §6.4 |
-| 全局快捷键 | `tauri-plugin-global-shortcut` | 实现 `Ctrl+Space` 显隐窗口 |
+| 全局快捷键 | `tauri-plugin-global-shortcut` | 实现可配置的呼出快捷键（默认未注册，用户在设置里录制） |
 | 样式 | 原生 CSS（CSS Variables 主题） | UI 复杂度低，v1 不引入 Tailwind/UnoCSS |
 
 > 这些选型只在与 spec 不冲突时生效。如果实现时发现某项选择导致与 spec §5–§7 的契约必须变形，先反馈，再调整。
@@ -101,7 +101,7 @@ SnipDock/
 
 完全按照 [target.md](target.md) §5.1–§5.4。**不增减字段、不改名**：
 - `categories(id, name, description, sort_order, created_at, updated_at)`
-- `snippets(id, category_id NOT NULL FK, title, content, tags, description, language, favorite, used_count, created_at, updated_at, last_used_at)`
+- `snippets(id, category_id NOT NULL FK, title, content, description, language, favorite, used_count, created_at, updated_at, last_used_at)`
 - 索引：`idx_snippets_category_id` / `idx_snippets_updated_at` / `idx_snippets_used_count` / `idx_snippets_last_used_at`
 
 ### 4.2 数据库文件位置
@@ -189,7 +189,6 @@ pub enum AppError {
 |---|---|
 | `name` / `title` / `content` trim 后非空 | Rust 端，写库前 |
 | `category_id` 必须存在 | DB 外键 + `update_category` 时显式 SELECT |
-| `tags` 字符串规范化为 `tag1,tag2`（去空格、去重、保持插入顺序） | Rust 端 |
 | `language` 默认 `"text"`、`favorite` 默认 0 | Rust 端 default |
 
 ---
@@ -232,7 +231,7 @@ const isEditing = ref(false)
 完全按 spec §9.4 的伪代码实现 `filteredSnippets` 这个 `computed`：
 
 1. 若 `selectedCategoryId !== null` 先按 category_id 过滤；
-2. 关键字 `keyword.toLowerCase()` 在 5 个字段中包含匹配（title/content/description/tags/category_name）；
+2. 关键字 `keyword.toLowerCase()` 在 4 个字段中包含匹配（title/content/description/category_name）；
 3. 排序：`favorite desc → last_used_at desc → used_count desc → updated_at desc`。
 
 `category_name` 通过 `joinSnippetWithCategoryName(snippets, categories)` 在 composable 中合成。
@@ -263,7 +262,7 @@ App.vue
 
 | 快捷键 | 作用域 | 实现 |
 |---|---|---|
-| `Ctrl+Space` | 全局 | `tauri-plugin-global-shortcut` 调用 `window.show()/hide()` |
+| 可配置呼出键 | 全局 | `tauri-plugin-global-shortcut`，键位由用户在设置里录制（默认未注册）；调用 `toggle_main_window` |
 | `Esc` | 窗口 | `useShortcuts` 监听；优先关闭编辑器 → 否则隐藏窗口 |
 | `Enter` | 窗口 | 复制选中片段（见 §6.4） |
 | `Ctrl+N` | 窗口 | 打开新增片段表单 |
@@ -283,12 +282,12 @@ App.vue
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
-│ Search snippets, commands, tags...                               │
+│ Search snippets, commands...                                      │
 ├──────────────┬─────────────────────────┬─────────────────────────┤
 │              │                         │                         │
 │ 全部         │  查看 GPU 温度          │  标题：查看 GPU 温度     │
 │ 默认         │  kubectl 查看 Pod       │  分类：ROCm              │
-│ Linux        │  docker logs            │  Tags：rocm,gpu,dcu      │
+│ Linux        │  docker logs            │  语言：bash              │
 │ Docker       │  md5 校验文件           │                         │
 │ Kubernetes   │                         │  rocm-smi --showtemp     │
 │ ROCm  ▸      │                         │                         │
@@ -373,8 +372,8 @@ CategoryList.vue (右键删除)
 - [ ] 关闭并重启应用，所有数据保持
 - [ ] 数据库被外部删除后启动，能自动重建并落入"默认"分类
 - [ ] 5000 条片段下，搜索关键字键入响应 < 50ms
-- [ ] `Ctrl+Space` 在窗口最小化/失焦时也能显隐
-- [ ] 中文文案、中文 Tag、中文分类名均能搜索命中
+- [ ] 呼出快捷键在窗口最小化/失焦时也能显隐（用户在设置里录制）
+- [ ] 中文文案、中文分类名均能搜索命中
 - [ ] `delete_category` 对非空分类返回的错误文案在 UI 上展示
 
 ---
@@ -384,9 +383,8 @@ CategoryList.vue (右键删除)
 | 项 | 风险 | 处置 |
 |---|---|---|
 | `search_snippets` / `copy_snippet` 未实现 | 与 spec §7 命令清单形式上不齐 | §5.2 已标注待用户确认 |
-| `tags` 字符串字段 | 跨片段统计 / 重命名困难 | spec §4.3 已接受 v1 妥协；v2 重构 |
 | 前端内存搜索 | 数据量超阈值后退化 | v1 假设 < 5000；v2 切换到 SQL/FTS5，仅改 `useSnippets.search()` 的实现 |
-| 全局快捷键冲突 | 不同系统可能与 IME 冲突 | v1 先用 `Ctrl+Space`；冲突时允许配置（v2） |
+| 全局快捷键冲突 | 不同系统可能与 IME 冲突 | v1 由用户在设置里录制（注册失败时提示），避免默认键抢占 |
 | 数据备份/导出 | 用户数据无导出渠道 | v1 文档化数据库文件位置；v2 加 export/import |
 
 ---
@@ -410,6 +408,6 @@ CategoryList.vue (右键删除)
 
 1. **不实现 `search_snippets` 后端命令**（spec §7.2 列出）—— 改为前端 `computed`。
 2. **不实现 `copy_snippet` 后端命令**（spec §7.2 列出）—— 改为前端剪贴板 + `mark_snippet_used`。
-3. **`tauri-plugin-global-shortcut` 用于 `Ctrl+Space`** —— spec §11 没说明实现位置。
+3. **呼出快捷键由用户录制而非固定 `Ctrl+Space`** —— spec §11 原写固定 Ctrl+Space，现已改为可配置（用户在设置弹窗录制），因为默认键易与 IME 冲突。
 
 如果其中任何一项不被接受，会在 §5.2 / §6.4 / §7 中按要求改回。
