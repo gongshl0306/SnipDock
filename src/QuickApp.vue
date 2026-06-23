@@ -1,22 +1,20 @@
 <script setup lang="ts">
-// 快速搜索窗口的根组件（#quick hash 时挂载）。
-//
-// 启动即加载全部片段（quick 窗口预创建但 hidden，组件在首次创建时就 mount，
-// 所以 load 在 onMounted 调；之后窗口 show/hide 不重建组件，状态常驻）。
-//
-// 交互：输入过滤、↑↓ 切换、Enter 复制并关闭、Esc 关闭、鼠标点击复制。
-// 失焦隐藏由 Rust 端处理；窗口再次 show 时 reset 状态（监听 visibility 事件）。
+// 快速搜索窗口（两栏）：左栏分类 / 右栏片段。
+// 600x420 无边框置顶窗口。搜索框跨两栏。呼出时默认选中「收藏」。
 
 import { onMounted, ref, nextTick } from 'vue'
 import { listen } from '@tauri-apps/api/event'
 import { useQuickSearch } from '@/composables/useQuickSearch'
 
 const {
+  categoryList,
+  selectedCategoryId,
   searchQuery,
   filteredSnippets,
   selectedIndex,
   copied,
-  load,
+  init,
+  selectCategory,
   moveSelection,
   copyAndClose,
   hide,
@@ -26,11 +24,10 @@ const {
 const inputRef = ref<HTMLInputElement | null>(null)
 
 onMounted(async () => {
-  await load()
+  await init()
   await nextTick()
   inputRef.value?.focus()
 
-  // 窗口再次显示时重置状态 + 聚焦搜索框。
   await listen('tauri://focus', async () => {
     reset()
     await nextTick()
@@ -63,7 +60,7 @@ function onKeydown(e: KeyboardEvent) {
 
 function preview(content: string): string {
   const firstLine = content.split('\n').map(l => l.trim()).find(l => l !== '') ?? ''
-  return firstLine.length > 60 ? firstLine.slice(0, 60) + '…' : firstLine
+  return firstLine.length > 50 ? firstLine.slice(0, 50) + '…' : firstLine
 }
 
 async function onClickItem(index: number) {
@@ -85,31 +82,41 @@ async function onClickItem(index: number) {
         v-model="searchQuery"
         class="search-input"
         type="text"
-        placeholder="搜索片段…（↑↓ 选择，Enter 复制，Esc 关闭）"
+        placeholder="搜索…"
         @keydown="onKeydown"
       />
     </div>
 
-    <ul v-if="filteredSnippets.length > 0" class="result-list">
-      <li
-        v-for="(s, i) in filteredSnippets"
-        :key="s.id"
-        class="result-item"
-        :class="{ active: i === selectedIndex }"
-        @mouseenter="selectedIndex = i"
-        @click="onClickItem(i)"
-      >
-        <div class="item-head">
-          <span v-if="s.favorite" class="star">★</span>
-          <span class="item-title">{{ s.title }}</span>
-          <span v-if="s.category_name" class="item-cat">{{ s.category_name }}</span>
-        </div>
-        <div class="item-preview">{{ preview(s.content) }}</div>
-      </li>
-    </ul>
-    <div v-else class="empty">
-      <span v-if="searchQuery.trim()">无匹配片段</span>
-      <span v-else>暂无片段，先在主窗口添加</span>
+    <div class="cols">
+      <ul class="cat-col">
+        <li
+          v-for="cat in categoryList"
+          :key="cat.id"
+          class="cat-item"
+          :class="{
+            active: selectedCategoryId === cat.id,
+            fav: cat.id === 'favorites',
+          }"
+          @click="selectCategory(cat.id)"
+        >{{ cat.name }}</li>
+      </ul>
+
+      <ul v-if="filteredSnippets.length > 0" class="snip-col">
+        <li
+          v-for="(s, i) in filteredSnippets"
+          :key="s.id"
+          class="snip-item"
+          :class="{ active: i === selectedIndex }"
+          @mouseenter="selectedIndex = i"
+          @click="onClickItem(i)"
+        >
+          <div class="item-title">{{ s.title }}</div>
+          <div class="item-preview">{{ preview(s.content) }}</div>
+        </li>
+      </ul>
+      <div v-else class="empty">
+        <span>暂无片段</span>
+      </div>
     </div>
   </div>
 </template>
@@ -138,12 +145,12 @@ async function onClickItem(index: number) {
 }
 .search-row {
   flex: 0 0 auto;
-  padding: var(--space-3);
+  padding: var(--space-2) var(--space-3);
   border-bottom: 1px solid var(--border);
 }
 .search-input {
   width: 100%;
-  padding: var(--space-3) var(--space-4);
+  padding: var(--space-2) var(--space-3);
   background: var(--bg-3);
   color: var(--fg-1);
   border: 1px solid var(--border);
@@ -154,52 +161,62 @@ async function onClickItem(index: number) {
 .search-input:focus {
   border-color: var(--accent);
 }
-.result-list {
+.cols {
   flex: 1 1 auto;
+  display: grid;
+  grid-template-columns: 30% 70%;
+  min-height: 0;
+}
+.cat-col {
+  list-style: none;
+  margin: 0;
+  padding: var(--space-1) 0;
+  overflow: auto;
+  border-right: 1px solid var(--border);
+  background: var(--bg-2);
+}
+.cat-item {
+  padding: var(--space-2) var(--space-3);
+  font-size: 12px;
+  cursor: pointer;
+  border-left: 2px solid transparent;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cat-item:hover { background: var(--bg-3); }
+.cat-item.active {
+  background: var(--bg-3);
+  border-left-color: var(--accent);
+  color: var(--accent);
+}
+.cat-item.fav { color: #e6c43a; }
+.cat-item.fav.active { color: #f6d24c; }
+.snip-col {
   list-style: none;
   margin: 0;
   padding: var(--space-1) 0;
   overflow: auto;
 }
-.result-item {
-  padding: var(--space-2) var(--space-4);
+.snip-item {
+  padding: var(--space-2) var(--space-3);
   cursor: pointer;
   border-left: 2px solid transparent;
 }
-.result-item:hover {
-  background: var(--bg-2);
-}
-.result-item.active {
+.snip-item:hover { background: var(--bg-2); }
+.snip-item.active {
   background: var(--bg-3);
   border-left-color: var(--accent);
 }
-.item-head {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-.star {
-  color: var(--accent);
-  font-size: 11px;
-}
 .item-title {
-  flex: 1 1 auto;
   font-size: 13px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.item-cat {
-  flex: 0 0 auto;
-  font-size: 11px;
-  color: var(--fg-2);
-  background: var(--bg-1);
-  padding: 1px 6px;
-  border-radius: var(--radius-1);
-}
 .item-preview {
   margin-top: 2px;
-  font-size: 12px;
+  font-size: 11px;
   color: var(--fg-2);
   font-family: var(--mono);
   overflow: hidden;
@@ -207,11 +224,10 @@ async function onClickItem(index: number) {
   white-space: nowrap;
 }
 .empty {
-  flex: 1 1 auto;
   display: flex;
   align-items: center;
   justify-content: center;
   color: var(--fg-2);
-  font-size: 13px;
+  font-size: 12px;
 }
 </style>

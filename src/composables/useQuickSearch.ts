@@ -1,60 +1,74 @@
-// 快速搜索窗口的状态与逻辑。
+// 快速搜索窗口的状态与逻辑（两栏版）。
 //
-// 与主窗口的 useSnippets 独立（不同 webview，模块级单例各自一份）。
-// quick 窗口只在「全部」语义下搜全部片段，不需要 selectedCategoryId。
+// 左栏：分类（全部 / ★ 收藏 / 真实分类）。右栏：当前选中分类的片段。
+// 顶部搜索框过滤右栏的片段。排序由后端保证（used_count DESC → updated_at DESC）。
 //
-// 搜索：spec §8.1 的 4 字段匹配（title/content/description/category_name），
-// 大小写不敏感、子串包含。结果沿用后端 §9.4 排序（load 时已排好）。
-//
-// 复制流程：copySnippet（写剪贴板 + mark_snippet_used）→ 显示短暂 toast →
-// 调 getCurrentWindow().hide() 隐藏窗口 + 清空搜索框。
-// 失焦隐藏由 Rust 端 on_window_event 处理；复制后主动 hide 避免依赖失焦。
+// 复用 useSnippets 的 copySnippet（写剪贴板 + mark_used）。
+// 分类列表从 useCategories 拉（独立 webview，各自一份 singleton）。
 
 import { ref, computed } from 'vue'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { useSnippets } from '@/composables/useSnippets'
+import { useCategories, type CategorySelection } from '@/composables/useCategories'
+import * as snippetApi from '@/api/snippets'
 import type { Snippet } from '@/types/models'
 
-const { snippets, load, copySnippet } = useSnippets()
+const { copySnippet } = useSnippets()
+const { categories, load: loadCategories } = useCategories()
 
+const selectedCategoryId = ref<CategorySelection>('favorites')
+const snippets = ref<Snippet[]>([])
 const searchQuery = ref('')
 const selectedIndex = ref(0)
 const copied = ref(false)
+const loaded = ref(false)
 
-/** 按搜索词过滤；空词时返回全部（后端已排序）。 */
+/** 左栏分类列表（含虚拟项）。 */
+const categoryList = computed(() => [
+  { id: 'all' as const, name: '全部' },
+  { id: 'favorites' as const, name: '★ 收藏' },
+  ...categories.value.map(c => ({ id: c.id, name: c.name })),
+])
+
+/** 右栏：按搜索词过滤当前分类的片段。 */
 const filteredSnippets = computed<Snippet[]>(() => {
   const q = searchQuery.value.trim().toLowerCase()
   if (!q) return snippets.value
   return snippets.value.filter(s => {
-    const hay = [
-      s.title,
-      s.content,
-      s.category_name ?? '',
-    ]
+    const hay = [s.title, s.content, s.category_name ?? '']
       .join('\n')
       .toLowerCase()
     return hay.includes(q)
   })
 })
 
-/** 选中索引在过滤结果范围内 clamp。 */
-function clampSelected() {
-  const len = filteredSnippets.value.length
-  if (len === 0) {
-    selectedIndex.value = 0
-    return
+/** 加载指定分类下的片段。 */
+async function loadSnippetsFor(selection: CategorySelection) {
+  if (selection === 'all') {
+    snippets.value = await snippetApi.listSnippets()
+  } else if (selection === 'favorites') {
+    snippets.value = await snippetApi.listSnippetsFavorites()
+  } else {
+    snippets.value = await snippetApi.listSnippetsByCategory(selection)
   }
-  if (selectedIndex.value >= len) selectedIndex.value = len - 1
-  if (selectedIndex.value < 0) selectedIndex.value = 0
 }
 
-/** 当前选中的片段（可能为 null）。 */
-const selectedSnippet = computed<Snippet | null>(() => {
-  clampSelected()
-  return filteredSnippets.value[selectedIndex.value] ?? null
-})
+/** 初始化：加载分类 + 默认选中分类的片段。 */
+async function init() {
+  if (loaded.value) return
+  loaded.value = true
+  await loadCategories()
+  await loadSnippetsFor(selectedCategoryId.value)
+}
 
-/** ↑/↓ 切换选中。dir = +1 下移、-1 上移。 */
+/** 切换左栏分类，重新拉右栏片段。 */
+async function selectCategory(selection: CategorySelection) {
+  selectedCategoryId.value = selection
+  searchQuery.value = ''
+  selectedIndex.value = 0
+  await loadSnippetsFor(selection)
+}
+
 function moveSelection(dir: 1 | -1) {
   const len = filteredSnippets.value.length
   if (len === 0) return
@@ -65,7 +79,6 @@ function moveSelection(dir: 1 | -1) {
 async function copyAndClose(snippet: Snippet): Promise<void> {
   await copySnippet(snippet)
   copied.value = true
-  // 短暂显示「已复制」后隐藏；150ms 让用户看到反馈。
   setTimeout(async () => {
     copied.value = false
     searchQuery.value = ''
@@ -74,7 +87,7 @@ async function copyAndClose(snippet: Snippet): Promise<void> {
   }, 600)
 }
 
-/** 隐藏窗口（Esc / 失焦兜底）。 */
+/** 隐藏窗口。 */
 async function hide() {
   await getCurrentWindow().hide()
 }
@@ -88,13 +101,14 @@ function reset() {
 
 export function useQuickSearch() {
   return {
-    snippets,
+    categoryList,
+    selectedCategoryId,
     searchQuery,
     filteredSnippets,
     selectedIndex,
-    selectedSnippet,
     copied,
-    load,
+    init,
+    selectCategory,
     moveSelection,
     copyAndClose,
     hide,

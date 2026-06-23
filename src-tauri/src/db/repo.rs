@@ -161,9 +161,8 @@ fn row_to_snippet(row: &Row<'_>) -> rusqlite::Result<SnippetRow> {
     })
 }
 
-/// 列表查询的公共 SQL 片段：JOIN categories 取 category_name，
-/// 按 spec §9.4 排序：favorite DESC, last_used_at DESC, used_count DESC, updated_at DESC。
-/// last_used_at 为 NULL 时排到最后（用 MAX(NULL, '1970...') 兜底）。
+/// 列表查询的公共 SQL 片段：JOIN categories 取 category_name。
+/// 排序：used_count DESC（使用频率高的最前）→ updated_at DESC（未使用的按更新时间）。
 const SNIPPET_SELECT_ORDER: &str = "
 SELECT s.id, s.category_id, c.name AS category_name,
        s.title, s.content,
@@ -171,10 +170,7 @@ SELECT s.id, s.category_id, c.name AS category_name,
 FROM snippets s
 LEFT JOIN categories c ON c.id = s.category_id
 {FILTER}
-ORDER BY s.favorite DESC,
-         COALESCE(s.last_used_at, '0') DESC,
-         s.used_count DESC,
-         s.updated_at DESC";
+ORDER BY s.used_count DESC, s.updated_at DESC";
 
 /// 全量片段（「全部」视图）。
 pub fn list_snippets(conn: &Connection) -> Result<Vec<SnippetRow>, rusqlite::Error> {
