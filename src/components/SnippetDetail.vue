@@ -6,6 +6,7 @@
 // 删除用 ModalDialog 确认。
 
 import { ref } from 'vue'
+import { Star, StarFilled, CopyDocument, Edit, Delete, CircleCheckFilled } from '@element-plus/icons-vue'
 import { useSnippets } from '@/composables/useSnippets'
 import { useCategories } from '@/composables/useCategories'
 import { parseAppError } from '@/types/models'
@@ -79,7 +80,10 @@ async function onConfirmDelete() {
             :class="{ starred: selectedSnippet.favorite !== 0 }"
             title="切换收藏"
             @click="onToggleFavorite"
-          >{{ selectedSnippet.favorite !== 0 ? '★' : '☆' }}</span>
+          >
+            <StarFilled v-if="selectedSnippet.favorite !== 0" class="icon" />
+            <Star v-else class="icon" />
+          </span>
           {{ selectedSnippet.title }}
         </h2>
 
@@ -106,10 +110,16 @@ async function onConfirmDelete() {
 
       <div class="actions">
         <button class="btn primary" @click="onCopy">
-          {{ copied ? '已复制 ✓' : '复制 (Enter)' }}
+          <CircleCheckFilled v-if="copied" class="icon" />
+          <CopyDocument v-else class="icon" />
+          {{ copied ? '已复制' : '复制 (Enter)' }}
         </button>
-        <button class="btn" @click="startEdit(selectedSnippet)">编辑 (Ctrl+E)</button>
-        <button class="btn danger" @click="confirmDelete = true">删除 (Ctrl+D)</button>
+        <button class="btn" @click="startEdit(selectedSnippet)">
+          <Edit class="icon" /> 编辑 (Ctrl+E)
+        </button>
+        <button class="btn danger" @click="confirmDelete = true">
+          <Delete class="icon" /> 删除 (Ctrl+D)
+        </button>
       </div>
     </template>
 
@@ -229,6 +239,9 @@ code {
   border-top: 1px solid var(--border);
 }
 .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
   padding: var(--space-2) var(--space-4);
   border: 1px solid var(--border);
   border-radius: var(--radius-2);

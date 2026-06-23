@@ -9,6 +9,7 @@
 // 删除失败（CategoryNotEmpty）在底部 status 里提示。
 
 import { ref } from 'vue'
+import { Plus, Edit, Close, StarFilled } from '@element-plus/icons-vue'
 import { useCategories } from '@/composables/useCategories'
 import { parseAppError } from '@/types/models'
 import ModalDialog, { type FieldSchema } from './ModalDialog.vue'
@@ -102,7 +103,9 @@ function startDelete(id: number, name: string) {
   <div class="cat-panel">
     <div class="toolbar">
       <span class="title">分类</span>
-      <button class="add-btn" title="新增分类 (Ctrl+Shift+N)" @click="startCreate">+</button>
+      <button class="add-btn" title="新增分类 (Ctrl+Shift+N)" @click="startCreate">
+        <Plus class="icon" />
+      </button>
     </div>
 
     <ul class="cat-list">
@@ -118,7 +121,7 @@ function startDelete(id: number, name: string) {
         :class="{ active: selectedCategoryId === 'favorites' }"
         @click="selectCategory('favorites')"
       >
-        <span class="cat-name fav">★ 收藏</span>
+        <span class="cat-name fav"><StarFilled class="icon star-icon" /> 收藏</span>
       </li>
       <li
         v-for="c in categories"
@@ -133,12 +136,12 @@ function startDelete(id: number, name: string) {
             class="icon-btn"
             title="重命名"
             @click.stop="startRename(c.id, c.name, c.description)"
-          >✎</button>
+          ><Edit class="icon" /></button>
           <button
             class="icon-btn danger"
             title="删除"
             @click.stop="startDelete(c.id, c.name)"
-          >✕</button>
+          ><Close class="icon" /></button>
         </span>
       </li>
     </ul>
@@ -227,6 +230,12 @@ function startDelete(id: number, name: string) {
 }
 .cat-name.fav {
   color: #e6c43a;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.star-icon {
+  font-size: 13px;
 }
 .cat-item.favorites.active .cat-name.fav {
   color: #f6d24c;

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
+import { Setting } from '@element-plus/icons-vue'
 import CategoryList from '@/components/CategoryList.vue'
 import SnippetList from '@/components/SnippetList.vue'
 import SnippetDetail from '@/components/SnippetDetail.vue'
@@ -49,7 +50,7 @@ onMounted(async () => {
         class="settings-btn"
         title="设置"
         @click="settingsOpen = true"
-      >⚙</button>
+      ><Setting class="icon" /></button>
     </header>
     <section class="cols">
       <aside class="col col-cat">
@@ -143,5 +144,5 @@ onMounted(async () => {
   color: var(--fg-2);
 }
 .statusbar .ok { color: var(--accent); }
-.statusbar .err { color: #e57373; }
+.statusbar .err { color: var(--danger); }
 </style>

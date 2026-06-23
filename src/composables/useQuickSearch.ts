@@ -26,7 +26,7 @@ const loaded = ref(false)
 /** 左栏分类列表（含虚拟项）。 */
 const categoryList = computed(() => [
   { id: 'all' as const, name: '全部' },
-  { id: 'favorites' as const, name: '★ 收藏' },
+  { id: 'favorites' as const, name: '收藏' },
   ...categories.value.map(c => ({ id: c.id, name: c.name })),
 ])
 

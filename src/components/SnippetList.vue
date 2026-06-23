@@ -7,6 +7,7 @@
 // 搜索框 M4 才启用，这里先占位禁用。
 
 import { computed } from 'vue'
+import { Plus, StarFilled } from '@element-plus/icons-vue'
 import { useSnippets } from '@/composables/useSnippets'
 
 const {
@@ -31,7 +32,9 @@ function preview(content: string): string {
   <div class="list-panel">
     <div class="toolbar">
       <span class="title">片段</span>
-      <button class="add-btn" title="新增片段 (Ctrl+N)" @click="startCreate">+</button>
+      <button class="add-btn" title="新增片段 (Ctrl+N)" @click="startCreate">
+        <Plus class="icon" />
+      </button>
     </div>
 
     <div v-if="loading" class="state">加载中…</div>
@@ -50,7 +53,7 @@ function preview(content: string): string {
         @dblclick="startEdit(s)"
       >
         <div class="snip-head">
-          <span v-if="s.favorite" class="star" title="已收藏">★</span>
+          <StarFilled v-if="s.favorite" class="icon star" title="已收藏" />
           <span class="snip-title">{{ s.title }}</span>
         </div>
         <div class="snip-preview">{{ preview(s.content) }}</div>

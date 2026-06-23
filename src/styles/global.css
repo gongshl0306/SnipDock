@@ -23,3 +23,12 @@ button {
 ::selection {
   background: var(--accent-soft);
 }
+
+/* @element-plus/icons-vue 图标默认是 1em x 1em 的 SVG，
+ * 继承 currentColor。这里给它一个稳定的尺寸 + 垂直对齐基线。 */
+svg.icon {
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.125em;
+  fill: currentColor;
+}

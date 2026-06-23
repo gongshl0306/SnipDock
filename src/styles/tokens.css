@@ -1,15 +1,19 @@
 /* 视觉令牌：颜色、字号、间距。
- * v1 仅深色主题；亮色留 v2。 */
+ * 明亮主题（白色基调）。所有组件通过 CSS 变量取色，
+ * 切换主题只需改本文件。 */
 :root {
-  --bg-1: #0f1115;
-  --bg-2: #161a21;
-  --bg-3: #1d222b;
-  --fg-1: #e5e9f0;
-  --fg-2: #9aa3b2;
-  --accent: #5b8def;
-  --accent-soft: rgba(91, 141, 239, 0.18);
-  --danger: #e57373;
-  --border: #242a35;
+  /* 背景层次：bg-1 整体（最浅）→ bg-2 面板 → bg-3 选中态/输入框 */
+  --bg-1: #ffffff;
+  --bg-2: #f6f7f9;
+  --bg-3: #e8ecf1;
+  /* 文字层次：fg-1 主体（深）→ fg-2 次要（中灰） */
+  --fg-1: #1f2329;
+  --fg-2: #6b7480;
+  /* 强调色：保持蓝色基调，亮主题下用稍深的版本以保证可读性 */
+  --accent: #2563eb;
+  --accent-soft: rgba(37, 99, 235, 0.12);
+  --danger: #dc2626;
+  --border: #d8dde3;
   --mono: 'JetBrains Mono', 'Cascadia Code', Consolas, ui-monospace, monospace;
   --sans: -apple-system, 'Segoe UI', 'Microsoft YaHei', system-ui, sans-serif;
 

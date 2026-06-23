@@ -4,6 +4,7 @@
 
 import { onMounted, ref, nextTick } from 'vue'
 import { listen } from '@tauri-apps/api/event'
+import { StarFilled, CircleCheckFilled } from '@element-plus/icons-vue'
 import { useQuickSearch } from '@/composables/useQuickSearch'
 
 const {
@@ -73,7 +74,8 @@ async function onClickItem(index: number) {
 <template>
   <div class="quick-shell">
     <div v-if="copied" class="copied-overlay">
-      <span>已复制 ✓</span>
+      <CircleCheckFilled class="icon copied-icon" />
+      <span>已复制</span>
     </div>
 
     <div class="search-row">
@@ -98,7 +100,10 @@ async function onClickItem(index: number) {
             fav: cat.id === 'favorites',
           }"
           @click="selectCategory(cat.id)"
-        >{{ cat.name }}</li>
+        >
+          <StarFilled v-if="cat.id === 'favorites'" class="icon" />
+          {{ cat.name }}
+        </li>
       </ul>
 
       <ul v-if="filteredSnippets.length > 0" class="snip-col">
@@ -138,10 +143,15 @@ async function onClickItem(index: number) {
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: var(--space-2);
   background: var(--bg-1);
   z-index: 10;
   font-size: 18px;
   color: var(--accent);
+}
+.copied-icon {
+  font-size: 24px;
+  color: #22c55e;
 }
 .search-row {
   flex: 0 0 auto;
@@ -176,6 +186,9 @@ async function onClickItem(index: number) {
   background: var(--bg-2);
 }
 .cat-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   padding: var(--space-2) var(--space-3);
   font-size: 12px;
   cursor: pointer;
