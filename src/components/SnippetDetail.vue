@@ -11,9 +11,11 @@ import { useSnippets } from '@/composables/useSnippets'
 import { useCategories } from '@/composables/useCategories'
 import { parseAppError } from '@/types/models'
 import ModalDialog from './ModalDialog.vue'
+import Highlight from './Highlight.vue'
 
 const {
   selectedSnippet,
+  searchQuery,
   copySnippet,
   startEdit,
   remove,
@@ -84,13 +86,18 @@ async function onConfirmDelete() {
             <StarFilled v-if="selectedSnippet.favorite !== 0" class="icon" />
             <Star v-else class="icon" />
           </span>
-          {{ selectedSnippet.title }}
+          <Highlight :text="selectedSnippet.title" :query="searchQuery" />
         </h2>
 
         <dl class="meta">
           <div class="meta-row">
             <dt>分类</dt>
-            <dd>{{ categoryName(selectedSnippet.category_id, selectedSnippet.category_name) }}</dd>
+            <dd>
+              <Highlight
+                :text="categoryName(selectedSnippet.category_id, selectedSnippet.category_name)"
+                :query="searchQuery"
+              />
+            </dd>
           </div>
           <div class="meta-row">
             <dt>使用</dt>
@@ -103,7 +110,7 @@ async function onConfirmDelete() {
         </dl>
 
         <div class="content-label">内容</div>
-        <pre class="content">{{ selectedSnippet.content }}</pre>
+        <pre class="content"><Highlight :text="selectedSnippet.content" :query="searchQuery" /></pre>
       </div>
 
       <div v-if="errorMsg" class="err-msg">{{ errorMsg }}</div>

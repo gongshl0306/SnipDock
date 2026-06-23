@@ -53,8 +53,8 @@ pub fn run(conn: &Connection) -> Result<(), rusqlite::Error> {
 /// 对全新 DB 是空操作；对老 DB 执行 DROP COLUMN。
 /// 内置 SQLite >= 3.35.0 支持 DROP COLUMN（rusqlite 0.31 bundled = 3.45.x）。
 ///
-/// 已废弃清单：
-///   - tags：v1 不实现 Tag 功能（spec §4）
+/// 已废弃清单（保留字符串用于历史 DB 迁移，不代表 v1 还存在该字段）：
+///   - tags：v1 不引入任何 Tag 字段，老 DB 若残留此列在此清除
 ///   - description / language：v1 简化 schema，只留 title/content/分类/收藏
 fn drop_deprecated_snippet_columns(conn: &Connection) -> Result<(), rusqlite::Error> {
     const DEPRECATED: &[&str] = &["tags", "description", "language"];

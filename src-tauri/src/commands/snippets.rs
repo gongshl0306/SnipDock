@@ -1,6 +1,6 @@
 // 片段相关的 Tauri commands。
 //
-// 命令名、参数形状遵循 target.md §7.2（tags 已于 v1 移除）。
+// 命令名、参数形状遵循 target.md §7.2。v1 不引入 Tag 字段。
 // 偏差（design.md §5.2 已确认）：不实现 search_snippets / copy_snippet。
 //   - 搜索：前端 computed 内存过滤（M4）
 //   - 复制：前端 navigator.clipboard + mark_snippet_used

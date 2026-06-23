@@ -9,10 +9,12 @@
 import { computed } from 'vue'
 import { Plus, StarFilled } from '@element-plus/icons-vue'
 import { useSnippets } from '@/composables/useSnippets'
+import Highlight from '@/components/Highlight.vue'
 
 const {
   filteredSnippets,
   selectedSnippetId,
+  searchQuery,
   loading,
   selectSnippet,
   startCreate,
@@ -54,11 +56,17 @@ function preview(content: string): string {
       >
         <div class="snip-head">
           <StarFilled v-if="s.favorite" class="icon star" title="已收藏" />
-          <span class="snip-title">{{ s.title }}</span>
+          <span class="snip-title">
+            <Highlight :text="s.title" :query="searchQuery" />
+          </span>
         </div>
-        <div class="snip-preview">{{ preview(s.content) }}</div>
+        <div class="snip-preview">
+          <Highlight :text="preview(s.content)" :query="searchQuery" />
+        </div>
         <div class="snip-meta">
-          <span v-if="s.category_name" class="cat-tag">{{ s.category_name }}</span>
+          <span v-if="s.category_name" class="cat-chip">
+            <Highlight :text="s.category_name" :query="searchQuery" />
+          </span>
           <span v-if="s.used_count > 0" class="used">用过 {{ s.used_count }} 次</span>
         </div>
       </li>
@@ -175,7 +183,7 @@ function preview(content: string): string {
   font-size: 11px;
   color: var(--fg-2);
 }
-.cat-tag {
+.cat-chip {
   padding: 1px 6px;
   background: var(--bg-1);
   border-radius: var(--radius-1);

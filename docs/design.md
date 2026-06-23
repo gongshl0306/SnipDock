@@ -15,10 +15,10 @@
 
 为避免过度设计，下列特性 v1 一律不实现：
 
-- 独立的 `tags` 表 / `snippet_tags` 关联表（v1 连字符串 `tags` 也不做）
+- Tag / 标签功能（无 `tags` 列、无 `tags` 表、无关联表）
 - SQL 端搜索（FTS5、`LIKE` 联合查询）
 - 多级分类 / 分类树
-- 高级查询语法（`tag:foo`、`category:bar`）
+- 高级查询语法（`category:bar` 等）
 - 多个示例分类（v1 仅创建 `默认`）
 - 删除非空分类时级联或迁移片段（直接报错 `Category is not empty`）
 - 系统托盘之外的其他系统集成（自动启动、通知等）

@@ -66,7 +66,7 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 ## Product
 
-SnipDock is a desktop snippet manager: users save commands / code / paths / templates, organize them in user-defined categories, optionally tag them, and recall them via fast keyboard-driven search. The full product spec lives in [docs/target.md](docs/target.md) — **treat it as the source of truth**. When the spec and this file disagree, the spec wins. UI reference: [UI.png](UI.png).
+SnipDock is a desktop snippet manager: users save commands / code / paths / templates, organize them in user-defined categories, and recall them via fast keyboard-driven search. The full product spec lives in [docs/target.md](docs/target.md) — **treat it as the source of truth**. When the spec and this file disagree, the spec wins. UI reference: [UI.png](UI.png).
 
 ## Repo state
 
@@ -78,10 +78,10 @@ Planned stack (from the spec, not yet committed): Tauri shell, SQLite for persis
 
 The spec is deliberately conservative. Section §15 forbids over-engineering:
 
-- **Tags are a comma-separated string column on `snippets`** — do **not** introduce a `tags` table or `snippet_tags` join table.
+- **No tag feature in v1** — there is no `tags` column, no `tags` table, no `snippet_tags` join table. Categories are the only organization mechanism.
 - **Search runs in frontend memory** over the loaded snippet list — do **not** add SQL `LIKE`-fan-out, FTS5, or other server-side search machinery.
 - **One-level categories only** — no category tree, no parent_id, no nesting.
-- **No advanced query syntax** (`tag:foo`, `category:bar`) — keyword search across `title / content / description / tags / category_name` is the whole feature.
+- **No advanced query syntax** (`category:bar` etc.) — case-insensitive substring match across `title / content / category_name` is the whole feature.
 - **Default category is `默认` only** — don't seed extra example categories on first launch.
 - **Deleting a non-empty category must fail** with `Category is not empty`. The "delete and cascade" / "delete and reassign" variants are explicitly deferred.
 
@@ -91,7 +91,7 @@ If a request seems to push against these, surface the conflict before implementi
 
 When you write the code, these names and shapes are fixed by [docs/target.md](docs/target.md) and are the public contract between layers — change one and you have to change all of them together:
 
-- **DB columns** (§5.1, §5.2) — `categories(id, name, description, sort_order, created_at, updated_at)` and the `category_id` FK + `tags / language / favorite / used_count / last_used_at` columns on `snippets`.
+- **DB columns** (§5.1, §5.2) — `categories(id, name, description, sort_order, created_at, updated_at)` and `snippets(id, category_id FK, title, content, favorite, used_count, created_at, updated_at, last_used_at)`. v1 has **no** tags / description / language columns on `snippets`.
 - **Indexes** (§5.4) — `idx_snippets_category_id`, `idx_snippets_updated_at`, `idx_snippets_used_count`, `idx_snippets_last_used_at`.
 - **TS types** (§6) — `Category`, `Snippet`, `CreateSnippetPayload`, `UpdateSnippetPayload`. The optional `category_name` on `Snippet` is populated by joins for global-search display.
 - **Rust commands** (§7) — `list_categories / create_category / update_category / delete_category` and `list_snippets / list_snippets_by_category / search_snippets / create_snippet / update_snippet / delete_snippet / copy_snippet / mark_snippet_used`. Don't rename, don't merge, don't add until v1 is complete.

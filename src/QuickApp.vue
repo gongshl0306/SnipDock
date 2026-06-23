@@ -6,6 +6,7 @@ import { onMounted, ref, nextTick } from 'vue'
 import { listen } from '@tauri-apps/api/event'
 import { StarFilled, CircleCheckFilled } from '@element-plus/icons-vue'
 import { useQuickSearch } from '@/composables/useQuickSearch'
+import Highlight from '@/components/Highlight.vue'
 
 const {
   categoryList,
@@ -115,8 +116,12 @@ async function onClickItem(index: number) {
           @mouseenter="selectedIndex = i"
           @click="onClickItem(i)"
         >
-          <div class="item-title">{{ s.title }}</div>
-          <div class="item-preview">{{ preview(s.content) }}</div>
+          <div class="item-title">
+            <Highlight :text="s.title" :query="searchQuery" />
+          </div>
+          <div class="item-preview">
+            <Highlight :text="preview(s.content)" :query="searchQuery" />
+          </div>
         </li>
       </ul>
       <div v-else class="empty">
