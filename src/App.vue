@@ -14,7 +14,7 @@ const status = ref<'loading' | 'ok' | 'err'>('loading')
 const message = ref('')
 
 const { load: loadCategories } = useCategories()
-const { isEditing, load: loadSnippets, bindCategoryWatcher } = useSnippets()
+const { isEditing, load: loadSnippets, bindCategoryWatcher, searchQuery } = useSnippets()
 
 // 设置弹窗可见性。
 const settingsOpen = ref(false)
@@ -38,9 +38,10 @@ onMounted(async () => {
   <main class="shell">
     <header class="topbar">
       <input
+        v-model="searchQuery"
         class="search"
-        placeholder="Search snippets, commands... (M4)"
-        disabled
+        type="text"
+        placeholder="搜索片段…"
       />
       <button
         class="settings-btn"

@@ -7,7 +7,7 @@
 //   数字          → list_snippets_by_category（指定分类）
 // 选中片段若不在新列表里则清空。
 
-import { ref, watch } from 'vue'
+import { ref, computed, watch } from 'vue'
 import * as api from '@/api/snippets'
 import type {
   CreateSnippetPayload,
@@ -21,6 +21,21 @@ const selectedSnippetId = ref<number | null>(null)
 const selectedSnippet = ref<Snippet | null>(null)
 const searchQuery = ref('')
 const isEditing = ref(false)
+
+/**
+ * 搜索过滤：在当前加载的 snippets 中按 searchQuery 做大小写不敏感子串匹配，
+ * 字段包括 title / content / category_name。空查询返回全部（后端已按 §9.4 排序）。
+ */
+const filteredSnippets = computed<Snippet[]>(() => {
+  const q = searchQuery.value.trim().toLowerCase()
+  if (!q) return snippets.value
+  return snippets.value.filter(s => {
+    const hay = [s.title, s.content, s.category_name ?? '']
+      .join('\n')
+      .toLowerCase()
+    return hay.includes(q)
+  })
+})
 /** 正在编辑的片段；null = 新增模式。 */
 const editingSnippet = ref<Snippet | null>(null)
 const loading = ref(false)
@@ -170,6 +185,7 @@ export function useSnippets() {
   return {
     // 状态
     snippets,
+    filteredSnippets,
     selectedSnippetId,
     selectedSnippet,
     searchQuery,

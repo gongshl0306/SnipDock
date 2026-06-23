@@ -10,7 +10,7 @@ import { computed } from 'vue'
 import { useSnippets } from '@/composables/useSnippets'
 
 const {
-  snippets,
+  filteredSnippets,
   selectedSnippetId,
   loading,
   selectSnippet,
@@ -18,7 +18,7 @@ const {
   startEdit,
 } = useSnippets()
 
-const isEmpty = computed(() => !loading.value && snippets.value.length === 0)
+const isEmpty = computed(() => !loading.value && filteredSnippets.value.length === 0)
 
 /** content 单行预览：首行非空文本，截断到 80 字符。 */
 function preview(content: string): string {
@@ -42,7 +42,7 @@ function preview(content: string): string {
 
     <ul v-else class="snip-list">
       <li
-        v-for="s in snippets"
+        v-for="s in filteredSnippets"
         :key="s.id"
         class="snip-item"
         :class="{ active: selectedSnippetId === s.id }"
