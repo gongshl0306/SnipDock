@@ -18,13 +18,11 @@ export function listSnippets(): Promise<Snippet[]> {
 
 /**
  * 某分类下的片段。
- * 注意：invoke 的 key 必须与 Rust 命令参数名 `category_id` 完全一致
- * （Tauri 2 不自动转 camelCase），所以这里显式写 category_id。
+ * Tauri 2 默认把命令参数名转 camelCase，所以 Rust 端的 `category_id`
+ * 在前端 invoke 时必须用 `categoryId`。
  */
 export function listSnippetsByCategory(categoryId: number): Promise<Snippet[]> {
-  return invoke<Snippet[]>('list_snippets_by_category', {
-    category_id: categoryId,
-  })
+  return invoke<Snippet[]>('list_snippets_by_category', { categoryId })
 }
 
 /** 已收藏的片段（跨原分类）。「收藏」虚拟分类用。 */
