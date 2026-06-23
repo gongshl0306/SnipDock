@@ -13,7 +13,7 @@ import type {
   UpdateSnippetPayload,
   Snippet,
 } from '@/types/models'
-import { useCategories } from './useCategories'
+import { useCategories } from '@/composables/useCategories'
 
 const snippets = ref<Snippet[]>([])
 const selectedSnippetId = ref<number | null>(null)

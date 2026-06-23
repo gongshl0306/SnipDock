@@ -12,7 +12,7 @@
 
 import { ref, computed } from 'vue'
 import { getCurrentWindow } from '@tauri-apps/api/window'
-import { useSnippets } from './useSnippets'
+import { useSnippets } from '@/composables/useSnippets'
 import type { Snippet } from '@/types/models'
 
 const { snippets, load, copySnippet } = useSnippets()
