@@ -7,7 +7,9 @@
 //   - 快捷键 toggle 这个窗口；托盘 toggle 主窗口，互不干扰
 //
 // 窗口属性：无边框、置顶、不占任务栏、不可缩放、初始隐藏、居中。
-// 通过 URL hash `#quick` 让前端 main.ts 渲染 QuickApp 而非 App。
+// 用 WebviewUrl::App 加载与主窗口相同的 index.html，前端按
+// getCurrentWindow().label 区分渲染 App 还是 QuickApp（外部 URL 会
+// 让 Tauri IPC 不注入，导致 invoke 失败 → 白屏，所以必须用 App 而非 External）。
 
 use tauri::{Manager, Runtime, WebviewUrl, WebviewWindowBuilder};
 
@@ -20,16 +22,7 @@ pub fn create_quick_window<R: Runtime>(app: &tauri::AppHandle<R>) -> tauri::Resu
         return Ok(());
     }
 
-    // 复用主窗口的 URL（devUrl 或 frontendDist），追加 #quick hash。
-    // 这样前端用 window.location.hash 判断渲染哪个根组件。
-    let main_url = app
-        .get_webview_window(crate::tray::MAIN_WINDOW)
-        .and_then(|w| w.url().ok())
-        .map(|u| u.to_string())
-        .unwrap_or_default();
-    let quick_url = format!("{main_url}#quick");
-
-    WebviewWindowBuilder::new(app, QUICK_WINDOW, WebviewUrl::External(quick_url.parse().unwrap_or_else(|_| "tauri://localhost#quick".parse().unwrap())))
+    WebviewWindowBuilder::new(app, QUICK_WINDOW, WebviewUrl::App("index.html".into()))
         .title("SnipDock Quick")
         .inner_size(600.0, 420.0)
         .center()

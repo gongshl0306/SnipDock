@@ -12,7 +12,7 @@
 use std::sync::Mutex;
 
 use tauri::State;
-use tauri_plugin_global_shortcut::GlobalShortcutExt;
+use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 
 use crate::error::AppError;
 use crate::quick_window;
@@ -64,8 +64,11 @@ pub fn set_toggle_shortcut(
         let shortcut: tauri_plugin_global_shortcut::Shortcut = new_accel
             .try_into()
             .map_err(|_| AppError::Shortcut(format!("快捷键格式无效：{new_accel}")))?;
-        gs.on_shortcut(shortcut, move |app, _s, _e| {
-            quick_window::toggle_quick_window(app);
+        gs.on_shortcut(shortcut, move |app, _s, e| {
+            // 只在 Pressed 触发，避免 Released 又触发一次（导致松开立刻隐藏）。
+            if e.state == ShortcutState::Pressed {
+                quick_window::toggle_quick_window(app);
+            }
         })
         .map_err(|e| AppError::Shortcut(format!("注册快捷键失败（可能已被占用）：{e}")))?;
         Some(new_accel.to_string())
