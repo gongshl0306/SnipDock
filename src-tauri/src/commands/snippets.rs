@@ -70,6 +70,15 @@ pub fn list_snippets_by_category(
     Ok(repo::list_snippets_by_category(&conn, category_id)?)
 }
 
+/// 列出已收藏的片段（跨原分类）。
+#[tauri::command]
+pub fn list_snippets_favorites(
+    state: tauri::State<'_, Mutex<Connection>>,
+) -> Result<Vec<SnippetRow>, AppError> {
+    let conn = state.lock().expect("db mutex poisoned");
+    Ok(repo::list_snippets_favorites(&conn)?)
+}
+
 /// 新建片段。返回插入后的完整行。
 #[tauri::command]
 pub fn create_snippet(

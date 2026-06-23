@@ -14,5 +14,5 @@ pub use categories::{
 pub use settings::{get_settings, set_toggle_shortcut};
 pub use snippets::{
     create_snippet, delete_snippet, list_snippets, list_snippets_by_category,
-    mark_snippet_used, update_snippet,
+    list_snippets_favorites, mark_snippet_used, update_snippet,
 };

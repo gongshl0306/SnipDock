@@ -16,6 +16,7 @@ const {
   copySnippet,
   startEdit,
   remove,
+  toggleFavorite,
 } = useSnippets()
 const { categories } = useCategories()
 
@@ -47,6 +48,16 @@ async function onCopy() {
   }
 }
 
+async function onToggleFavorite() {
+  if (!selectedSnippet.value) return
+  errorMsg.value = ''
+  try {
+    await toggleFavorite(selectedSnippet.value)
+  } catch (e) {
+    errorMsg.value = parseAppError(e)?.message ?? String(e)
+  }
+}
+
 async function onConfirmDelete() {
   if (!selectedSnippet.value) return
   errorMsg.value = ''
@@ -63,7 +74,12 @@ async function onConfirmDelete() {
     <template v-if="selectedSnippet">
       <div class="detail-scroll">
         <h2 class="d-title">
-          <span v-if="selectedSnippet.favorite" class="star">★</span>
+          <span
+            class="star-toggle"
+            :class="{ starred: selectedSnippet.favorite !== 0 }"
+            title="切换收藏"
+            @click="onToggleFavorite"
+          >{{ selectedSnippet.favorite !== 0 ? '★' : '☆' }}</span>
           {{ selectedSnippet.title }}
         </h2>
 
@@ -137,6 +153,18 @@ async function onConfirmDelete() {
 .star {
   color: var(--accent);
   font-size: 14px;
+}
+.star-toggle {
+  cursor: pointer;
+  color: var(--fg-2);
+  font-size: 16px;
+  transition: color 0.15s;
+}
+.star-toggle:hover {
+  color: #e6c43a;
+}
+.star-toggle.starred {
+  color: #e6c43a;
 }
 .meta {
   margin: 0 0 var(--space-4);

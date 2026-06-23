@@ -19,12 +19,13 @@ mod tray;
 
 use std::sync::Mutex;
 use tauri::{Manager, WindowEvent};
-use tauri_plugin_global_shortcut::GlobalShortcutExt;
+use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 
 use commands::{
     create_category, create_snippet, delete_category, delete_snippet,
     get_settings, list_categories, list_snippets, list_snippets_by_category,
-    mark_snippet_used, set_toggle_shortcut, update_category, update_snippet,
+    list_snippets_favorites, mark_snippet_used, set_toggle_shortcut,
+    update_category, update_snippet,
 };
 
 /// 简单连通性检查命令，返回数据库中分类数量，证明 DB 已可用。
@@ -67,10 +68,14 @@ pub fn run() {
 
             // 5. 若配置了呼出快捷键，启动时注册（呼出的是 quick 窗口）。
             //    注册失败只打日志，不阻断启动（用户可在设置里改）。
+            //    只在 Pressed 边沿触发 toggle，避免 Released 又触发一次导致
+            //    「按下显示、松开立刻隐藏」。
             if let Some(accel) = app_settings.toggle_shortcut.as_deref() {
                 if let Err(e) =
-                    app.global_shortcut().on_shortcut(accel, move |app, _s, _e| {
-                        quick_window::toggle_quick_window(app);
+                    app.global_shortcut().on_shortcut(accel, move |app, _s, e| {
+                        if e.state == ShortcutState::Pressed {
+                            quick_window::toggle_quick_window(app);
+                        }
                     })
                 {
                     eprintln!("启动注册呼出快捷键 {accel} 失败：{e}");
@@ -105,6 +110,7 @@ pub fn run() {
             delete_category,
             list_snippets,
             list_snippets_by_category,
+            list_snippets_favorites,
             create_snippet,
             update_snippet,
             delete_snippet,

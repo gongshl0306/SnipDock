@@ -2,9 +2,10 @@
 //
 // design.md §6.2：模块级单例 ref，不用 Pinia。
 // 加载策略：watch useCategories().selectedCategoryId，
-//   null → list_snippets（全局），数字 → list_snippets_by_category。
-//   分类切换时自动重载，选中片段若不在新列表里则清空。
-// 搜索/排序（§9.4）的 filteredSnippets computed 留给 M4；M3 直接用 snippets。
+//   'all'        → list_snippets（全部）
+//   'favorites'  → list_snippets_favorites（已收藏，跨原分类）
+//   数字          → list_snippets_by_category（指定分类）
+// 选中片段若不在新列表里则清空。
 
 import { ref, watch } from 'vue'
 import * as api from '@/api/snippets'
@@ -27,16 +28,21 @@ const error = ref<string | null>(null)
 
 let watching = false
 
-/** 加载当前选中分类（或全部）下的片段。 */
+/** 加载当前选中分类（或全部/收藏）下的片段。 */
 async function load() {
   const { selectedCategoryId } = useCategories()
   loading.value = true
   error.value = null
   try {
-    snippets.value =
-      selectedCategoryId.value === null
-        ? await api.listSnippets()
-        : await api.listSnippetsByCategory(selectedCategoryId.value)
+    const selection = selectedCategoryId.value
+    if (selection === 'all') {
+      snippets.value = await api.listSnippets()
+    } else if (selection === 'favorites') {
+      snippets.value = await api.listSnippetsFavorites()
+    } else {
+      // 数字 = 真实分类 id
+      snippets.value = await api.listSnippetsByCategory(selection)
+    }
     // 选中片段若已不在当前列表，清空选中。
     if (
       selectedSnippetId.value !== null &&
@@ -98,6 +104,32 @@ async function copySnippet(snippet: Snippet): Promise<void> {
   if (selectedSnippetId.value === snippet.id) selectedSnippet.value = updated
 }
 
+/**
+ * 切换片段的收藏状态。
+ * 走 update_snippet，其他字段保持原值。成功后：
+ *   - 若当前在「收藏」视图下取消收藏 → 整表 reload（让该片段消失）
+ *   - 其他情况本地替换即可
+ */
+async function toggleFavorite(snippet: Snippet): Promise<void> {
+  const newFav = snippet.favorite === 0 ? 1 : 0
+  const updated = await api.updateSnippet({
+    id: snippet.id,
+    category_id: snippet.category_id,
+    title: snippet.title,
+    content: snippet.content,
+    favorite: newFav,
+  })
+  const { selectedCategoryId } = useCategories()
+  if (selectedCategoryId.value === 'favorites' && newFav === 0) {
+    // 在收藏视图下取消收藏 → 该片段应消失。
+    await load()
+  } else {
+    const idx = snippets.value.findIndex(s => s.id === snippet.id)
+    if (idx >= 0) snippets.value[idx] = updated
+    if (selectedSnippetId.value === snippet.id) selectedSnippet.value = updated
+  }
+}
+
 /** 进入新增模式。editingSnippet = null。 */
 function startCreate() {
   editingSnippet.value = null
@@ -152,6 +184,7 @@ export function useSnippets() {
     update,
     remove,
     copySnippet,
+    toggleFavorite,
     startCreate,
     startEdit,
     cancelEdit,

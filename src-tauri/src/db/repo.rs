@@ -203,6 +203,18 @@ pub fn list_snippets_by_category(
     Ok(out)
 }
 
+/// 全部已收藏（favorite=1）的片段。跨原分类。「收藏」虚拟分类用。
+pub fn list_snippets_favorites(conn: &Connection) -> Result<Vec<SnippetRow>, rusqlite::Error> {
+    let sql = SNIPPET_SELECT_ORDER.replace("{FILTER}", "WHERE s.favorite = 1");
+    let mut stmt = conn.prepare(&sql)?;
+    let rows = stmt.query_map([], row_to_snippet)?;
+    let mut out = Vec::new();
+    for r in rows {
+        out.push(r?);
+    }
+    Ok(out)
+}
+
 const SELECT_SNIPPET_BY_ID: &str = "
 SELECT s.id, s.category_id, c.name AS category_name,
        s.title, s.content,

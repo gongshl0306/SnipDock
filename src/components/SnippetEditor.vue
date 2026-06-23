@@ -54,8 +54,11 @@ function initForm() {
     }
   } else {
     // 新增模式：预选当前分类（或第一个）。
+    // selectedCategoryId 可能是数字（真实分类 id）或 'all'/'favorites'。
     const initialCat =
-      selectedCategoryId.value ?? categories.value[0]?.id ?? 0
+      typeof selectedCategoryId.value === 'number'
+        ? selectedCategoryId.value
+        : categories.value[0]?.id ?? 0
     form.value = { ...makeEmptyForm(), category_id: initialCat }
   }
   errorMsg.value = ''

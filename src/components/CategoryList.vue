@@ -1,8 +1,10 @@
 <script setup lang="ts">
 // 左栏：分类列表 + 工具栏。
 //
-// 「全部」是虚拟项，对应 selectedCategoryId = null（全局检索，spec §9.3）。
+// 「全部」是虚拟项，对应 selectedCategoryId = 'all'（全局检索）。
+// 「★ 收藏」是虚拟项，对应 'favorites'（跨原分类的收藏片段）。
 // 分类的真实数据来自 useCategories() 单例。
+// hover「★ 收藏」不显示 ✎/✕（不可重命名/删除）。
 // 新增/重命名用 ModalDialog 的表单模式；删除用确认模式。
 // 删除失败（CategoryNotEmpty）在底部 status 里提示。
 
@@ -106,10 +108,17 @@ function startDelete(id: number, name: string) {
     <ul class="cat-list">
       <li
         class="cat-item all"
-        :class="{ active: selectedCategoryId === null }"
-        @click="selectCategory(null)"
+        :class="{ active: selectedCategoryId === 'all' }"
+        @click="selectCategory('all')"
       >
         <span class="cat-name">全部</span>
+      </li>
+      <li
+        class="cat-item favorites"
+        :class="{ active: selectedCategoryId === 'favorites' }"
+        @click="selectCategory('favorites')"
+      >
+        <span class="cat-name fav">★ 收藏</span>
       </li>
       <li
         v-for="c in categories"
@@ -215,6 +224,12 @@ function startDelete(id: number, name: string) {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.cat-name.fav {
+  color: #e6c43a;
+}
+.cat-item.favorites.active .cat-name.fav {
+  color: #f6d24c;
 }
 .cat-actions {
   flex: 0 0 auto;

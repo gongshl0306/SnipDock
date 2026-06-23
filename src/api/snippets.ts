@@ -27,6 +27,11 @@ export function listSnippetsByCategory(categoryId: number): Promise<Snippet[]> {
   })
 }
 
+/** 已收藏的片段（跨原分类）。「收藏」虚拟分类用。 */
+export function listSnippetsFavorites(): Promise<Snippet[]> {
+  return invoke<Snippet[]>('list_snippets_favorites')
+}
+
 export function createSnippet(payload: CreateSnippetPayload): Promise<Snippet> {
   return invoke<Snippet>('create_snippet', { payload })
 }
