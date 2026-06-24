@@ -7,8 +7,6 @@
 //   4. 若 settings.toggle_shortcut 有值，注册全局呼出快捷键
 //   5. 拦截主窗口关闭 → 改为隐藏（缩到托盘，进程常驻）
 //   6. 注册所有 commands
-//
-// ping 命令保留作为启动连通性自检，M6 收尾时再移除。
 
 mod commands;
 mod db;
@@ -23,25 +21,16 @@ use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 
 use commands::{
     create_category, create_snippet, delete_category, delete_snippet,
-    get_settings, list_categories, list_snippets, list_snippets_by_category,
-    list_snippets_favorites, mark_snippet_used, set_toggle_shortcut,
-    update_category, update_snippet,
+    export_data, get_settings, import_data, list_categories, list_snippets,
+    list_snippets_by_category, list_snippets_favorites, mark_snippet_used,
+    set_toggle_shortcut, update_category, update_snippet,
 };
-
-/// 简单连通性检查命令，返回数据库中分类数量，证明 DB 已可用。
-#[tauri::command]
-fn ping(state: tauri::State<'_, Mutex<rusqlite::Connection>>) -> Result<String, error::AppError> {
-    let conn = state.lock().expect("db mutex poisoned");
-    let count: i64 = conn
-        .query_row("SELECT COUNT(*) FROM categories", [], |row| row.get(0))
-        .map_err(|e| error::AppError::Db(e.to_string()))?;
-    Ok(format!("SnipDock 后端就绪，分类数 = {}", count))
-}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
+        .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             let app_handle = app.handle().clone();
 
@@ -103,7 +92,6 @@ pub fn run() {
             }
         })
         .invoke_handler(tauri::generate_handler![
-            ping,
             list_categories,
             create_category,
             update_category,
@@ -117,6 +105,8 @@ pub fn run() {
             mark_snippet_used,
             get_settings,
             set_toggle_shortcut,
+            export_data,
+            import_data,
         ])
         .run(tauri::generate_context!())
         .expect("error while running SnipDock");

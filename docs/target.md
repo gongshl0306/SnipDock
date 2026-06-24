@@ -661,3 +661,73 @@ Rust Commands：增加分类 CRUD
 ```
 
 这些可以放到后续版本。
+
+---
+
+## 16. 数据导出 / 导入
+
+### 16.1 目的
+
+为了让用户能跨机器迁移数据、做手动备份，第一版在设置弹窗里提供
+**导出** 与 **导入** 两个按钮。
+
+### 16.2 文件格式
+
+单文件 JSON，UTF-8 编码：
+
+```json
+{
+  "version": 1,
+  "exported_at": "<RFC3339>",
+  "categories": [
+    { "name": "Linux", "description": "" }
+  ],
+  "snippets": [
+    {
+      "category_name": "Linux",
+      "title": "查看 GPU 温度",
+      "content": "rocm-smi --showtemp",
+      "favorite": 0
+    }
+  ]
+}
+```
+
+字段说明：
+
+```text
+version       固定为 1，用于将来格式演进
+exported_at   导出时的 RFC3339 时间戳
+categories    [{ name, description }] —— 不导出 id / sort_order / 时间戳
+snippets      [{ category_name, title, content, favorite }] —— 用 name 关联分类
+```
+
+不导出：`id`、`sort_order`、`created_at`、`updated_at`、`last_used_at`、`used_count`。
+这些都是本地状态，跨机器没意义；导入时由当前库重新生成。
+
+### 16.3 导入策略
+
+合并语义，**不清空当前数据**：
+
+```text
+分类按 name 唯一：
+  已存在  → 复用原 id
+  不存在  → 新建（沿用 backup 中的 description）
+
+片段按 (匹配后 category_id, title, content) 三元组去重：
+  已存在  → 跳过
+  不存在  → 插入
+
+backup 中的分类名在本地都找不到（罕见）→ 落到「默认」分类
+```
+
+整个导入过程包在 SQLite 事务里，任一步失败整体回滚。
+
+### 16.4 验收
+
+```text
+导出后生成的 JSON 能用任意文本编辑器打开并阅读
+反复导入同一个文件不会产生重复片段
+导出后清空 DB，再导入，数据与之前一致（不要求 id / 时间戳一致）
+导入过程中 SQL 失败 → 数据库回滚到导入前状态
+```

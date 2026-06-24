@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { invoke } from '@tauri-apps/api/core'
 import { Setting } from '@element-plus/icons-vue'
 import CategoryList from '@/components/CategoryList.vue'
 import SnippetList from '@/components/SnippetList.vue'
@@ -11,10 +10,6 @@ import { useCategories } from '@/composables/useCategories'
 import { useSnippets } from '@/composables/useSnippets'
 import { bindShortcuts } from '@/composables/useShortcuts'
 
-// 启动自检：ping 证明后端 + DB 连通。M6 收尾时移除。
-const status = ref<'loading' | 'ok' | 'err'>('loading')
-const message = ref('')
-
 const { load: loadCategories } = useCategories()
 const { isEditing, load: loadSnippets, bindCategoryWatcher, searchQuery } = useSnippets()
 
@@ -22,18 +17,11 @@ const { isEditing, load: loadSnippets, bindCategoryWatcher, searchQuery } = useS
 const settingsOpen = ref(false)
 
 onMounted(async () => {
-  try {
-    message.value = await invoke<string>('ping')
-    status.value = 'ok'
-    // 后端就绪后加载分类，再加载片段；并注册「分类切换→自动重载」watch。
-    await loadCategories()
-    bindCategoryWatcher()
-    await loadSnippets()
-    bindShortcuts()
-  } catch (e: unknown) {
-    message.value = String(e)
-    status.value = 'err'
-  }
+  // 加载分类，再加载片段；并注册「分类切换→自动重载」watch。
+  await loadCategories()
+  bindCategoryWatcher()
+  await loadSnippets()
+  bindShortcuts()
 })
 </script>
 
@@ -64,11 +52,6 @@ onMounted(async () => {
         <SnippetDetail v-else />
       </section>
     </section>
-    <footer class="statusbar">
-      <span v-if="status === 'loading'">连接后端中…</span>
-      <span v-else-if="status === 'ok'" class="ok">{{ message }}</span>
-      <span v-else class="err">后端连接失败：{{ message }}</span>
-    </footer>
     <SettingsDialog v-model="settingsOpen" />
   </main>
 </template>
@@ -135,14 +118,4 @@ onMounted(async () => {
   color: var(--fg-2);
   font-size: 13px;
 }
-.statusbar {
-  flex: 0 0 auto;
-  padding: 6px 12px;
-  border-top: 1px solid var(--border);
-  background: var(--bg-2);
-  font-size: 12px;
-  color: var(--fg-2);
-}
-.statusbar .ok { color: var(--accent); }
-.statusbar .err { color: var(--danger); }
 </style>

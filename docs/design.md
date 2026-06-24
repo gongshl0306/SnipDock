@@ -141,10 +141,15 @@ update_category   { id, name, description? }
 delete_category   { id }
 list_snippets
 list_snippets_by_category   { category_id }
+list_snippets_favorites
 create_snippet    { CreateSnippetPayload }
 update_snippet    { UpdateSnippetPayload }
 delete_snippet    { id }
 mark_snippet_used { id }
+get_settings
+set_toggle_shortcut { accelerator }
+export_data       { path }   // 详见 target.md §16
+import_data       { path }   // 详见 target.md §16
 ```
 
 ### 5.2 v1 推迟实现的命令
@@ -385,7 +390,7 @@ CategoryList.vue (右键删除)
 | `search_snippets` / `copy_snippet` 未实现 | 与 spec §7 命令清单形式上不齐 | §5.2 已标注待用户确认 |
 | 前端内存搜索 | 数据量超阈值后退化 | v1 假设 < 5000；v2 切换到 SQL/FTS5，仅改 `useSnippets.search()` 的实现 |
 | 全局快捷键冲突 | 不同系统可能与 IME 冲突 | v1 由用户在设置里录制（注册失败时提示），避免默认键抢占 |
-| 数据备份/导出 | 用户数据无导出渠道 | v1 文档化数据库文件位置；v2 加 export/import |
+| 数据备份/导出 | 数据库文件被外部修改、误删 | v1 提供 JSON 导出/导入（设置面板）；命令 `export_data` / `import_data`；详见 target.md §16 |
 
 ---
 

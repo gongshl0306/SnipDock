@@ -4,10 +4,12 @@
 // lib.rs 通过 `use commands::{...}` 引入具体命令函数，
 // generate_handler! 宏据此生成 __cmd__ 辅助项。
 
+pub mod backup;
 pub mod categories;
 pub mod settings;
 pub mod snippets;
 
+pub use backup::{export_data, import_data};
 pub use categories::{
     create_category, delete_category, list_categories, update_category,
 };

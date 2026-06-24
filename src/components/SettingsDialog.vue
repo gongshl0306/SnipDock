@@ -1,5 +1,7 @@
 <script setup lang="ts">
-// 设置弹窗：录制全局呼出快捷键。
+// 设置弹窗：
+//   1. 录制全局呼出快捷键
+//   2. 数据导出 / 导入（JSON 备份）
 //
 // 录制流程：点「录制」→ 监听 keydown → 要求至少一个修饰键（Ctrl/Cmd/Alt/Shift）
 //   + 一个普通键 → 显示组合（如 "Ctrl+Shift+D"）。
@@ -7,9 +9,16 @@
 // 「清除」= 设为空（不注册任何快捷键）。
 // 「保存」调 set_toggle_shortcut，后端做注册 + 持久化；
 // 失败（格式错/被占用）显示中文错误。
+//
+// 导出：弹保存对话框，把全部分类+片段写成 JSON。
+// 导入：弹打开对话框，合并到当前库（分类按 name、片段按三元组去重）。
+//       导入成功后重新加载内存中的 categories / snippets。
 
 import { ref, computed } from 'vue'
 import { getSettings, setToggleShortcut } from '@/api/settings'
+import { exportData, importData } from '@/api/backup'
+import { useCategories } from '@/composables/useCategories'
+import { useSnippets } from '@/composables/useSnippets'
 import { parseAppError } from '@/types/models'
 
 const props = defineProps<{ modelValue: boolean }>()
@@ -25,6 +34,14 @@ const isRecording = ref(false)
 const errorMsg = ref('')
 const saving = ref(false)
 const loaded = ref(false)
+
+/** 导出 / 导入 状态。null = 空闲。 */
+const backupBusy = ref<'export' | 'import' | null>(null)
+/** 导出/导入成功后的提示文字（蓝色）。 */
+const backupInfo = ref('')
+
+const { load: reloadCategories } = useCategories()
+const { load: reloadSnippets } = useSnippets()
 
 /** 当前显示的快捷键：优先录制中的，否则已保存的。 */
 const displayShortcut = computed(() => recorded.value ?? savedShortcut.value)
@@ -55,6 +72,8 @@ watch(
       loaded.value = false
       recorded.value = null
       errorMsg.value = ''
+      backupInfo.value = ''
+      backupBusy.value = null
       isRecording.value = false
       void load()
     }
@@ -137,6 +156,45 @@ function close() {
 function onBackdropClick() {
   close()
 }
+
+async function onExport() {
+  if (backupBusy.value) return
+  backupBusy.value = 'export'
+  errorMsg.value = ''
+  backupInfo.value = ''
+  try {
+    const r = await exportData()
+    if (r) {
+      backupInfo.value = `已导出 ${r.categories} 个分类 / ${r.snippets} 条片段 → ${r.path}`
+    }
+  } catch (e) {
+    errorMsg.value = parseAppError(e)?.message ?? String(e)
+  } finally {
+    backupBusy.value = null
+  }
+}
+
+async function onImport() {
+  if (backupBusy.value) return
+  backupBusy.value = 'import'
+  errorMsg.value = ''
+  backupInfo.value = ''
+  try {
+    const r = await importData()
+    if (r) {
+      // 合并完成后重新加载主窗口数据。
+      await reloadCategories()
+      await reloadSnippets()
+      backupInfo.value =
+        `导入完成：新建分类 ${r.created_categories}、复用 ${r.reused_categories}；` +
+        `新增片段 ${r.created_snippets}、跳过重复 ${r.skipped_snippets}`
+    }
+  } catch (e) {
+    errorMsg.value = parseAppError(e)?.message ?? String(e)
+  } finally {
+    backupBusy.value = null
+  }
+}
 </script>
 
 <template>
@@ -177,6 +235,25 @@ function onBackdropClick() {
               </button>
             </div>
           </div>
+
+          <hr class="divider" />
+
+          <div class="setting-row">
+            <div class="setting-label">
+              <div class="title">数据备份</div>
+              <div class="desc">导出全部分类与片段为 JSON；导入时按名称去重合并，不会清空当前数据</div>
+            </div>
+            <div class="setting-control">
+              <button class="btn small" :disabled="!!backupBusy" @click="onExport">
+                {{ backupBusy === 'export' ? '导出中…' : '导出' }}
+              </button>
+              <button class="btn small" :disabled="!!backupBusy" @click="onImport">
+                {{ backupBusy === 'import' ? '导入中…' : '导入' }}
+              </button>
+            </div>
+          </div>
+
+          <p v-if="backupInfo" class="info">{{ backupInfo }}</p>
           <p v-if="errorMsg" class="err">{{ errorMsg }}</p>
         </div>
 
@@ -203,7 +280,7 @@ function onBackdropClick() {
   outline: none;
 }
 .modal {
-  width: 420px;
+  width: 480px;
   max-width: calc(100vw - 32px);
   background: var(--bg-2);
   border: 1px solid var(--border);
@@ -257,6 +334,18 @@ function onBackdropClick() {
   margin: var(--space-3) 0 0;
   color: var(--danger);
   font-size: 12px;
+}
+.info {
+  margin: var(--space-3) 0 0;
+  color: var(--accent);
+  font-size: 12px;
+  line-height: 1.4;
+  word-break: break-all;
+}
+.divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: var(--space-3) 0;
 }
 .modal-foot {
   display: flex;
